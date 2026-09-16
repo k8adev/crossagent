@@ -150,6 +150,39 @@ The built-in `idle_regex`/`busy_regex` defaults are a **best-effort guess**
 at each harness's idle/busy prompt shape, captured from live panes — they
 are still expected to be tuned by hand once you can watch a live session.
 
+## Skill
+
+`skills/pair/SKILL.md` teaches a driver agent how to use the crossagent tools:
+brief the peer pane as a same-level copilot, call `discuss` at the right
+moments (plan, implementation, architectural fork), handle each verdict, and
+escalate to the human on decisions that aren't the agent's to make.
+
+Both Claude Code and Codex CLI read the same `SKILL.md` format (YAML
+frontmatter with `name` and `description`), and both follow symlinked skill
+directories, so one skill directory serves both hosts.
+
+Link it into your personal skill dirs:
+
+```
+crossagent-mcp setup --link
+```
+
+This symlinks `skills/pair` into `~/.claude/skills/pair`,
+`~/.codex/skills/pair` (or `$CODEX_HOME/skills/pair` if set), and
+`~/.agents/skills/pair`. A target that's missing gets a symlink created; one
+already linked to this package is left alone; a real file/directory or a
+symlink pointing elsewhere is never touched — it's reported so you can
+resolve it by hand. `crossagent-mcp setup --unlink` reverses this, removing
+only the symlinks it created.
+
+To link manually instead:
+
+```
+ln -s <path-to-this-repo>/skills/pair ~/.claude/skills/pair
+ln -s <path-to-this-repo>/skills/pair ~/.codex/skills/pair
+ln -s <path-to-this-repo>/skills/pair ~/.agents/skills/pair
+```
+
 ## Setup
 
 ```
