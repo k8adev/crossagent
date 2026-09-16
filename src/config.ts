@@ -8,6 +8,8 @@ export const CONFIG_PATH = join(homedir(), ".config", "crossagent", "config.toml
 export interface HarnessConfig {
   idleRegex: string;
   busyRegex?: string;
+  /** Slash command (or similar) that resets the harness's conversation state before a brief. Undefined when the harness has no known one. */
+  resetCommand?: string;
 }
 
 export interface CrossagentConfig {
@@ -34,14 +36,18 @@ const DEFAULT_CONFIG: CrossagentConfig = {
     claude: {
       idleRegex: "^❯\\s*$",
       busyRegex: "esc to interrupt",
+      resetCommand: "/clear",
     },
     codex: {
       idleRegex: "^›\\s*(Ask Codex to do anything)?\\s*$",
       busyRegex: "esc to interrupt",
+      resetCommand: "/new",
     },
     unknown: {
       idleRegex: "^[>❯›$%]\\s*$",
       busyRegex: "esc to interrupt",
+      /* No known reset command for an unrecognized harness. */
+      resetCommand: undefined,
     },
   },
   defaults: {
@@ -61,7 +67,7 @@ export async function loadConfig(path: string = CONFIG_PATH): Promise<Crossagent
   }
 
   const parsed = parse(raw) as Partial<{
-    harness: Record<string, Partial<{ idle_regex: string; busy_regex: string }>>;
+    harness: Record<string, Partial<{ idle_regex: string; busy_regex: string; reset_command: string }>>;
     defaults: Partial<{ timeout_ms: number; quiet_ms: number; tail_lines: number }>;
   }>;
 
@@ -71,6 +77,7 @@ export async function loadConfig(path: string = CONFIG_PATH): Promise<Crossagent
     harness[name] = {
       idleRegex: config?.idle_regex ?? base.idleRegex,
       busyRegex: config?.busy_regex ?? base.busyRegex,
+      resetCommand: config?.reset_command ?? base.resetCommand,
     };
   }
 
@@ -95,4 +102,9 @@ export function getBusyRegex(config: CrossagentConfig, harnessName: string): Reg
   const entry = config.harness[harnessName] ?? config.harness.unknown;
   const pattern = entry?.busyRegex;
   return pattern ? new RegExp(pattern) : undefined;
+}
+
+export function getResetCommand(config: CrossagentConfig, harnessName: string): string | undefined {
+  const entry = config.harness[harnessName] ?? config.harness.unknown;
+  return entry?.resetCommand;
 }

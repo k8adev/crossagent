@@ -228,6 +228,23 @@ describe("extractReply", () => {
     expect(result.reply).toBe("new reply line");
   });
 
+  it("finds the echoed prompt even when the TUI re-wraps its last line across multiple screen lines", () => {
+    const sentText = "please review this long implementation message that will definitely get wrapped by a narrow terminal";
+    const before = "❯\n──────────────";
+    const after = [
+      "please review this long implementation message that will",
+      "definitely get wrapped by a narrow terminal",
+      "⏺ Looks solid, ship it.",
+      "❯",
+      "──────────────",
+    ].join("\n");
+    const idle = /^❯\s*$/;
+
+    const result = extractReply({ sentText, before, after, idleRegex: idle, tailLines: 8 });
+
+    expect(result.reply).toBe("⏺ Looks solid, ship it.");
+  });
+
   it("returns rawTail when the extracted reply is empty, for debugging", () => {
     const sentText = "hello";
     const before = "";

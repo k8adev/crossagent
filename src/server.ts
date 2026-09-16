@@ -2,11 +2,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { register, computeState } from "./bootstrap.js";
 import { discoverPeers, parsePanes, LIST_PANES_FORMAT, type PaneRecord, type PeerScope } from "./discovery.js";
-import { send, capture, waitIdle, WaitIdleTimeoutError, listPanesRaw, extractReply, TmuxUnreachableError } from "./tmux.js";
-import { loadConfig, getIdleRegex, getBusyRegex } from "./config.js";
+import { send, capture, setPaneOption, getPaneOption, waitIdle, WaitIdleTimeoutError, listPanesRaw, extractReply, TmuxUnreachableError } from "./tmux.js";
+import { loadConfig, getIdleRegex, getBusyRegex, getResetCommand } from "./config.js";
+import { briefPreamble, reviewPreamble, extractReview, type ReviewKind } from "./protocol.js";
 
-const REVIEW_PREAMBLE =
-  "You are reviewing a change from a peer coding agent over crossagent. Reply with concrete, actionable feedback.\n\n";
+/** Pane option set once brief() completes with AGREE; discuss() checks it to decide whether to (re-)brief first. */
+const BRIEFED_OPTION = "@crossagent_briefed";
+
+/** Per-pane discuss() round counter, reset whenever brief() (re-)briefs that pane. In-memory only — a server restart resets all counts. */
+const roundsByPane = new Map<string, number>();
 
 function errorResult(message: string) {
   return {
@@ -192,68 +196,230 @@ export function createServer(): McpServer {
   );
 
   server.registerTool(
+    "brief",
+    {
+      title: "Brief",
+      description: "Sends the pairing-protocol role brief to a peer pane and waits for its VERDICT: AGREE.",
+      inputSchema: {
+        pane: z.string().optional(),
+        force: z.boolean().default(false),
+      },
+    },
+    async ({ pane, force }) => {
+      const state = await computeState();
+      const resolved = await resolveTargetPane(state, pane);
+      if (!resolved.ok) {
+        return errorResult(resolved.message);
+      }
+      const targetPane = resolved.pane;
+      const harness = await peerHarness(state, targetPane);
+
+      if (!force) {
+        const alreadyBriefed = await getPaneOption(targetPane, BRIEFED_OPTION);
+        if (alreadyBriefed) {
+          return textResult({
+            pane: targetPane,
+            harness,
+            verdict: "AGREE",
+            rationale: "already briefed; pass force: true to re-brief",
+          });
+        }
+      }
+
+      const briefResult = await runBrief(targetPane, state, harness);
+      if (!briefResult.ok) {
+        return errorResult(briefResult.message);
+      }
+      return textResult({
+        pane: targetPane,
+        harness,
+        verdict: briefResult.verdict,
+        rationale: briefResult.rationale,
+      });
+    },
+  );
+
+  server.registerTool(
+    "discuss",
+    {
+      title: "Discuss",
+      description: "Sends a review message to a peer pane (briefing it first if needed), waits for its reply, and parses the VERDICT: line.",
+      inputSchema: {
+        pane: z.string().optional(),
+        message: z.string(),
+        kind: z.enum(["plan", "implementation", "question"]).default("implementation"),
+        timeout_ms: z.number().int().positive().optional(),
+      },
+    },
+    async ({ pane, message, kind, timeout_ms }) => runDiscuss(pane, message, kind, timeout_ms),
+  );
+
+  server.registerTool(
     "ask_review",
     {
       title: "Ask review",
-      description: "Sends a review request to a peer pane (or the sole repo-scoped peer) and waits for its reply.",
+      description: "Alias of discuss with kind 'implementation', kept for compatibility.",
       inputSchema: {
         pane: z.string().optional(),
         prompt: z.string(),
         timeout_ms: z.number().int().positive().optional(),
       },
     },
-    async ({ pane, prompt, timeout_ms }) => {
-      let targetPane = pane;
-      const state = await computeState();
-
-      if (!targetPane) {
-        /* Resolving the sole repo peer needs our own pane; explicit `pane` never does. */
-        if (!requirePane(state.pane)) {
-          return errorResult(
-            `${ownPaneUnresolvedError(state.reason)} ask_review needs \`pane\` to know which peer to reach.`,
-          );
-        }
-        const resolved = await resolveSolePeer(state.pane, state.repoKey);
-        if (!resolved.ok) {
-          return errorResult(resolved.message);
-        }
-        targetPane = resolved.pane;
-      } else {
-        const reachable = await requireTmuxServer();
-        if (!reachable.ok) {
-          return errorResult(reachable.message);
-        }
-      }
-
-      const config = await loadConfig();
-      const before = await capture(targetPane, 5000);
-      const sentText = REVIEW_PREAMBLE + prompt;
-      await send(targetPane, sentText);
-
-      const harness = await peerHarness(state, targetPane);
-      const idleRegex = getIdleRegex(config, harness);
-      const busyRegex = getBusyRegex(config, harness);
-
-      try {
-        const after = await waitIdle(() => capture(targetPane, 5000), {
-          idleRegex,
-          busyRegex,
-          timeoutMs: timeout_ms ?? config.defaults.timeoutMs,
-          pollMs: 500,
-          quietMs: config.defaults.quietMs,
-          tailLines: config.defaults.tailLines,
-        });
-        return textResult(extractReply({ sentText, before, after, idleRegex, tailLines: config.defaults.tailLines }));
-      } catch (error) {
-        if (error instanceof WaitIdleTimeoutError) {
-          return errorResult(`timed out waiting for review reply from pane ${targetPane}; last output:\n${error.tail}`);
-        }
-        return errorResult(`failed waiting on pane ${targetPane}: ${(error as Error).message}`);
-      }
-    },
+    async ({ pane, prompt, timeout_ms }) => runDiscuss(pane, prompt, "implementation", timeout_ms),
   );
 
   return server;
+
+  /** Shared implementation behind `discuss` and `ask_review` (a thin alias) — auto-briefs an un-briefed pane, then sends the review preamble + message and parses the verdict. */
+  async function runDiscuss(pane: string | undefined, message: string, kind: ReviewKind, timeout_ms: number | undefined) {
+    const state = await computeState();
+    const resolved = await resolveTargetPane(state, pane);
+    if (!resolved.ok) {
+      return errorResult(resolved.message);
+    }
+    const targetPane = resolved.pane;
+    const harness = await peerHarness(state, targetPane);
+
+    const briefed = await getPaneOption(targetPane, BRIEFED_OPTION);
+    if (!briefed) {
+      const briefResult = await runBrief(targetPane, state, harness);
+      if (!briefResult.ok) {
+        return errorResult(briefResult.message);
+      }
+      if (briefResult.verdict !== "AGREE") {
+        return textResult({
+          pane: targetPane,
+          verdict: briefResult.verdict,
+          rationale: `brief did not return AGREE: ${briefResult.rationale}`,
+          round: 0,
+        });
+      }
+    }
+
+    const config = await loadConfig();
+    const sentText = reviewPreamble(kind) + message;
+    const result = await sendAndWait(targetPane, sentText, config, harness, timeout_ms);
+    if (!result.ok) {
+      return errorResult(result.message);
+    }
+
+    const round = (roundsByPane.get(targetPane) ?? 0) + 1;
+    roundsByPane.set(targetPane, round);
+
+    const { verdict, rationale } = extractReview(result.reply);
+    return textResult({
+      pane: targetPane,
+      verdict,
+      rationale,
+      round,
+      ...(verdict === "UNPARSED" ? { raw: result.reply } : {}),
+    });
+  }
+
+  /** Resets the peer's conversation (if a reset_command is known), sends the role brief, and marks the pane briefed on AGREE. */
+  async function runBrief(
+    targetPane: string,
+    state: Awaited<ReturnType<typeof computeState>>,
+    harness: string,
+  ): Promise<{ ok: true; verdict: string; rationale: string } | { ok: false; message: string }> {
+    const config = await loadConfig();
+    const resetCommand = getResetCommand(config, harness);
+    if (resetCommand) {
+      await send(targetPane, resetCommand);
+      try {
+        await waitIdleOnPane(targetPane, config, harness, undefined);
+      } catch {
+        /* A reset that never settles is not fatal to briefing — fall through and send the brief anyway. */
+      }
+    }
+
+    const sentText = briefPreamble(harness, state.repoKey);
+    const result = await sendAndWait(targetPane, sentText, config, harness, undefined);
+    if (!result.ok) {
+      return result;
+    }
+
+    const { verdict, rationale } = extractReview(result.reply);
+    if (verdict === "AGREE") {
+      await setPaneOption(targetPane, BRIEFED_OPTION, String(state.pid));
+      roundsByPane.delete(targetPane);
+    }
+    return { ok: true, verdict, rationale };
+  }
+}
+
+/** Resolves the target pane shared by brief/discuss/ask_review: explicit `pane`, else the sole repo-scoped peer (needs our own pane resolved). */
+async function resolveTargetPane(
+  state: Awaited<ReturnType<typeof computeState>>,
+  pane: string | undefined,
+): Promise<SolePeerResult> {
+  if (pane) {
+    const reachable = await requireTmuxServer();
+    if (!reachable.ok) {
+      return { ok: false, message: reachable.message };
+    }
+    return { ok: true, pane };
+  }
+
+  if (!requirePane(state.pane)) {
+    return {
+      ok: false,
+      message: `${ownPaneUnresolvedError(state.reason)} this tool needs \`pane\` to know which peer to reach.`,
+    };
+  }
+  return resolveSolePeer(state.pane, state.repoKey);
+}
+
+/** Sends `text` to `targetPane`, waits for it to go idle, and extracts the reply. Shared by brief() and discuss(). */
+async function sendAndWait(
+  targetPane: string,
+  text: string,
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  harness: string,
+  timeoutMs: number | undefined,
+): Promise<{ ok: true; reply: string } | { ok: false; message: string }> {
+  const before = await capture(targetPane, 5000);
+  await send(targetPane, text);
+
+  const idleRegex = getIdleRegex(config, harness);
+  const busyRegex = getBusyRegex(config, harness);
+
+  try {
+    const after = await waitIdle(() => capture(targetPane, 5000), {
+      idleRegex,
+      busyRegex,
+      timeoutMs: timeoutMs ?? config.defaults.timeoutMs,
+      pollMs: 500,
+      quietMs: config.defaults.quietMs,
+      tailLines: config.defaults.tailLines,
+    });
+    const extracted = extractReply({ sentText: text, before, after, idleRegex, tailLines: config.defaults.tailLines });
+    return { ok: true, reply: extracted.reply };
+  } catch (error) {
+    if (error instanceof WaitIdleTimeoutError) {
+      return { ok: false, message: `timed out waiting for pane ${targetPane}; last output:\n${error.tail}` };
+    }
+    return { ok: false, message: `failed waiting on pane ${targetPane}: ${(error as Error).message}` };
+  }
+}
+
+/** Waits for `targetPane` to go idle without sending anything first — used after a reset_command. */
+async function waitIdleOnPane(
+  targetPane: string,
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  harness: string,
+  timeoutMs: number | undefined,
+): Promise<void> {
+  const idleRegex = getIdleRegex(config, harness);
+  const busyRegex = getBusyRegex(config, harness);
+  await waitIdle(() => capture(targetPane, 5000), {
+    idleRegex,
+    busyRegex,
+    timeoutMs: timeoutMs ?? config.defaults.timeoutMs,
+    pollMs: 500,
+    quietMs: config.defaults.quietMs,
+    tailLines: config.defaults.tailLines,
+  });
 }
 
 type SolePeerResult = { ok: true; pane: string } | { ok: false; message: string };

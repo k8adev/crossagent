@@ -9,6 +9,17 @@ export async function setPaneOption(pane: string, option: string, value: string)
   await execFileAsync("tmux", ["set-option", "-p", "-t", pane, option, value]);
 }
 
+/** Reads a single pane user option, returning undefined if it is unset. */
+export async function getPaneOption(pane: string, option: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFileAsync("tmux", ["show-options", "-p", "-t", pane, "-v", option]);
+    const value = stdout.trim();
+    return value.length > 0 ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const ENTER_DELAY_MS = 250;
 
 export async function send(pane: string, text: string): Promise<void> {
@@ -159,8 +170,12 @@ export interface ExtractReplyResult {
  * Strategy: normalize `sentText` and find the LAST occurrence of its last non-empty line in
  * `after` (screens can echo the prompt more than once, and tmux scrollback may repeat it).
  * Everything after that line is a candidate reply; the idle-prompt line and everything from
- * it onward (status lines) is then trimmed off. Falls back to the "new content since `before`"
- * diff when the sent text cannot be located (e.g. it scrolled out of the capture window).
+ * it onward (status lines) is then trimmed off. The anchor line is matched on whitespace-collapsed
+ * text (join lines, collapse spaces) rather than exact single-line equality, because a TUI may
+ * re-wrap a long echoed line across multiple screen lines — an exact-line match would then miss
+ * the echo entirely and fall through to an earlier partial echo. Falls back to the "new content
+ * since `before`" diff when the sent text cannot be located at all (e.g. it scrolled out of the
+ * capture window).
  */
 export function extractReply(options: ExtractReplyOptions): ExtractReplyResult {
   const { sentText, before, after, idleRegex, tailLines = 8 } = options;
@@ -173,9 +188,9 @@ export function extractReply(options: ExtractReplyOptions): ExtractReplyResult {
 
   let replyLines: string[] | undefined;
   if (lastSentLine) {
-    const echoIndex = afterLines.lastIndexOf(lastSentLine);
-    if (echoIndex !== -1) {
-      replyLines = afterLines.slice(echoIndex + 1);
+    const echoEndLine = findEchoEndLine(afterLines, lastSentLine);
+    if (echoEndLine !== -1) {
+      replyLines = afterLines.slice(echoEndLine + 1);
     }
   }
 
@@ -191,6 +206,44 @@ export function extractReply(options: ExtractReplyOptions): ExtractReplyResult {
     return { reply, rawTail: tailWindow(normalizedAfter, tailLines).join("\n") };
   }
   return { reply };
+}
+
+/** Collapses a line's internal whitespace runs to a single space, for cross-line-wrap comparison. */
+function collapse(line: string): string {
+  return line.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Finds the index of the LAST line in `afterLines` at which the echo of `targetLine` ends, tolerant
+ * of the terminal re-wrapping `targetLine` across multiple screen lines. Tries an exact single-line
+ * match first (the common case); if that fails, looks for a growing window of consecutive lines
+ * whose whitespace-collapsed concatenation ends with the collapsed target, and returns the last
+ * line of that window. Returns -1 if no match is found by either method.
+ */
+function findEchoEndLine(afterLines: string[], targetLine: string): number {
+  const exactIndex = afterLines.lastIndexOf(targetLine);
+  if (exactIndex !== -1) {
+    return exactIndex;
+  }
+
+  const collapsedTarget = collapse(targetLine);
+  if (collapsedTarget.length === 0) {
+    return -1;
+  }
+
+  for (let end = afterLines.length - 1; end >= 0; end--) {
+    let joined = "";
+    for (let start = end; start >= 0; start--) {
+      joined = joined.length === 0 ? collapse(afterLines[start]!) : `${collapse(afterLines[start]!)} ${joined}`;
+      if (joined.length > collapsedTarget.length + 1) {
+        break;
+      }
+      if (joined === collapsedTarget || joined.endsWith(collapsedTarget)) {
+        return end;
+      }
+    }
+  }
+  return -1;
 }
 
 /** Fallback: the tail of the normalized `after` lines that is new relative to `before` (naive suffix diff by line count). */

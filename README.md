@@ -55,10 +55,58 @@ only via the repo-path heuristic above, not by its declared identity.
 | `send` | `pane, text` | Sends literal text + Enter to a tmux pane. |
 | `read` | `pane, lines?` (default 200) | Captures the last N lines from a tmux pane. |
 | `wait_reply` | `pane, timeout_ms?` | Waits until the peer pane's harness looks idle, returns the new content. |
-| `ask_review` | `pane?, prompt, timeout_ms?` | Sends a review preamble + prompt to a pane (or the sole repo-scoped peer if `pane` is omitted), then waits for the reply. |
+| `brief` | `pane?, force?` | Sends the pairing-protocol role brief to a pane (resetting its conversation first, if a `reset_command` is known) and waits for `VERDICT: AGREE`. Idempotent; `force: true` re-briefs an already-briefed pane. |
+| `discuss` | `pane?, message, kind?: "plan" \| "implementation" \| "question", timeout_ms?` | Auto-briefs the pane if it hasn't been briefed, sends a review preamble + message, waits for the reply, and parses its `VERDICT:` line. Tracks a per-pane round counter (reset by `brief`). |
+| `ask_review` | `pane?, prompt, timeout_ms?` | Thin alias of `discuss` with `kind: "implementation"`, kept for compatibility. |
 
 All tool errors come back as `isError: true` content — no thrown exceptions
 cross the MCP boundary.
+
+## Pairing protocol
+
+`brief` and `discuss` implement a lightweight review protocol on top of the raw
+`send`/`read`/`wait_reply` primitives. The peer pane is a **same-level
+copilot**, not a senior and not an approver — it may read the repo and run
+read-only commands/tests (it shares the driver's cwd) but must never write.
+Because the peer harness has no crossagent skill of its own, every rule it
+must follow travels inside the messages `brief`/`discuss` send it.
+
+**Roles**: the driver calls the tools and implements; the peer reviews plans
+and implementations for gaps, security flaws, convention violations,
+business-logic errors, and missing tests, and disagrees when it disagrees.
+
+**Reply shape**: every peer reply is bracketed by a `REVIEW:` line (the actual
+answer — analysis, findings, or just "understood" for a brief ack) and ends
+with a `VERDICT: <word>` line, with nothing after it. `extractReview` finds
+the LAST `REVIEW:` line and the first `VERDICT:` line after it and returns
+the text between as the rationale; a peer that skips the `REVIEW:` marker
+falls back to the text between the last separator line (e.g. `───`) before
+`VERDICT:` and `VERDICT:` itself, with known tool-activity log lines (`•
+Ran …`, `└ …`, `… +N lines`) stripped — this keeps a TUI's echoed prompt and
+tool-activity log out of the rationale when the coarse echo-anchor in
+`extractReply` doesn't cleanly separate them.
+
+**Verdicts**: every peer reply ends with one `VERDICT: <word>` line —
+
+- `AGREE` — no corrections.
+- `ADJUST` — agree if the listed corrections are made.
+- `OBJECT` — do not proceed; reasons given.
+- `ESCALATE` — a decision only the human requester can make (product/scope,
+  irreversible, conflicts with their instruction, data only they have).
+- `UNPARSED` — the reply had no recognizable `VERDICT:` line (returned by
+  `parseVerdict`, along with the raw reply, so the caller can retry or ask
+  again).
+
+**Flow**: `brief(pane)` once per pane — resets the peer's conversation (if a
+`reset_command` is configured for its harness), sends the role brief, and
+marks the pane briefed on `AGREE`. `discuss(pane, message, kind)` sends a
+review round; if the pane was never briefed, it briefs it first
+automatically. `ask_review` is `discuss` with `kind: "implementation"`.
+
+**Consensus loop and escalation are driven by the caller** (e.g. a skill
+wrapping these tools): keep calling `discuss` with follow-ups until the
+verdict is `AGREE`, or stop and surface the question to the human requester
+on `ESCALATE`. crossagent itself does not loop or escalate on its own.
 
 ## Config
 
@@ -80,16 +128,23 @@ Optional `~/.config/crossagent/config.toml`:
 [harness.claude]
 idle_regex = "^❯\\s*$"
 busy_regex = "esc to interrupt"
+reset_command = "/clear"
 
 [harness.codex]
 idle_regex = "^›\\s*(Ask Codex to do anything)?\\s*$"
 busy_regex = "esc to interrupt"
+reset_command = "/new"
 
 [defaults]
 timeout_ms = 300000
 quiet_ms = 1500
 tail_lines = 8
 ```
+
+`reset_command` is sent (and waited on) by `brief` before the role preamble,
+so a prior unrelated conversation on the peer pane doesn't bleed into the
+protocol. It defaults to `/clear` for `claude`, `/new` for `codex`, and
+none for `unknown` harnesses.
 
 The built-in `idle_regex`/`busy_regex` defaults are a **best-effort guess**
 at each harness's idle/busy prompt shape, captured from live panes — they
