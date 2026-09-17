@@ -43,7 +43,8 @@ export function parseProcessLine(pid: number, line: string): ProcessInfo | undef
   };
 }
 
-function matchKnownHarness(comm: string): KnownHarness | undefined {
+/** Matches a `ps`/tmux `comm` value against KNOWN_HARNESSES, either bare or as a path's basename. */
+export function matchKnownHarness(comm: string): KnownHarness | undefined {
   return KNOWN_HARNESSES.find((name) => comm === name || comm.endsWith(`/${name}`));
 }
 

@@ -5,6 +5,7 @@ import { discoverPeers, parsePanes, LIST_PANES_FORMAT, type PaneRecord, type Pee
 import { send, capture, setPaneOption, getPaneOption, waitIdle, WaitIdleTimeoutError, listPanesRaw, extractReply, TmuxUnreachableError } from "./tmux.js";
 import { loadConfig, getIdleRegex, getBusyRegex, getResetCommand } from "./config.js";
 import { briefPreamble, reviewPreamble, extractReview, type ReviewKind } from "./protocol.js";
+import { matchKnownHarness } from "./harness.js";
 
 /** Pane option set once brief() completes with AGREE; discuss() checks it to decide whether to (re-)brief first. */
 const BRIEFED_OPTION = "@crossagent_briefed";
@@ -450,9 +451,23 @@ async function ownWindowId(pane: string): Promise<string> {
 }
 
 /**
- * Looks up a peer pane's declared harness via `@crossagent_harness`. Works without our own pane
- * resolved (degraded mode) — scope "all" only excludes `ownPaneId`, and an empty id excludes
- * nothing, so the target pane still shows up in the listing.
+ * Resolves a peer pane's harness: its declared `@crossagent_harness` wins; otherwise falls back
+ * to the pane's live `currentCommand` (a Codex/etc peer that never called register() still shows
+ * up this way); "unknown" only when neither identifies a known harness. Pure and unit-testable.
+ */
+export function resolvePeerHarness(peer: PaneRecord | undefined): string {
+  if (peer?.harness) {
+    return peer.harness;
+  }
+  const fromCommand = peer ? matchKnownHarness(peer.currentCommand) : undefined;
+  return fromCommand ?? "unknown";
+}
+
+/**
+ * Looks up a peer pane's harness, preferring its declared `@crossagent_harness` and falling back
+ * to `resolvePeerHarness()`'s `currentCommand` heuristic. Works without our own pane resolved
+ * (degraded mode) — scope "all" only excludes `ownPaneId`, and an empty id excludes nothing, so
+ * the target pane still shows up in the listing.
  */
 async function peerHarness(state: { pane: string | undefined; repoKey: string }, targetPane: string): Promise<string> {
   const peers = await discoverPeers({
@@ -461,5 +476,5 @@ async function peerHarness(state: { pane: string | undefined; repoKey: string },
     ownWindowId: state.pane ? await ownWindowId(state.pane) : "",
     ownRepoKey: state.repoKey,
   });
-  return peers.find((peer) => peer.paneId === targetPane)?.harness ?? "unknown";
+  return resolvePeerHarness(peers.find((peer) => peer.paneId === targetPane));
 }
