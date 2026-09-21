@@ -1,5 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
+
+// Placeholder domain, unconfirmed — change here once and it flows everywhere below.
+const SITE = 'https://crossagent.dev';
 ---
 
 <Base
@@ -11,7 +14,7 @@ import Base from '../layouts/Base.astro';
   <div class="inner hero">
     <div class="hero__copy">
       <h1><span class="nb">Your agent</span><br><span class="nb">needs a <em class="reviews">second</em></span><br><em class="reviews">opinion.</em></h1>
-      <p class="hero__sub">crossagent pairs the coding agent in one tmux pane with the one next to it. One writes, the other pushes back, before you ever see the diff.</p>
+      <p class="hero__sub"><strong>crossagent</strong> pairs the coding agent in one tmux pane with the one next to it. One writes, the other pushes back, before you ever see the diff.</p>
 
       <dl class="hero__for">
         <dt>FOR</dt>
@@ -20,13 +23,7 @@ import Base from '../layouts/Base.astro';
         <dd>a single agent, an IDE-only setup, or anything outside a terminal multiplexer.</dd>
       </dl>
 
-      <div class="copybox hero__install">
-        <code class="copybox__cmd" id="install-cmd">npx -y crossagent-mcp setup --link</code>
-        <button class="copybox__btn" type="button" data-copy="npx -y crossagent-mcp setup --link" aria-label="Copy install command">
-          <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-          <span class="copybox__label">copy</span>
-        </button>
-      </div>
+      <a class="btn btn--primary hero__cta" href="#install">Install</a>
     </div>
 
     <div class="hero__stack">
@@ -62,20 +59,24 @@ import Base from '../layouts/Base.astro';
 </header>
 
 
-<section class="band band--steps" id="calls">
+<section class="band band--steps" id="how-it-works">
   <div class="inner">
-    <h2 class="h2">Three calls</h2>
+    <h2 class="h2">How it works.</h2>
+    <div class="steps__lead">
+      <p>A coding agent reviewing its own work has the same blind spots twice. If you already run two harnesses side by side in tmux, a second opinion is sitting one pane over. You just had to paste between them by hand.</p>
+      <p><strong>crossagent</strong> turns that pane into a reviewer. The driver asks over MCP, the peer reads the repo and answers with a verdict, and nothing ships without the other one having a say.</p>
+    </div>
     <div class="steps">
       <div class="step">
-        <span class="step__n">1</span>
+        <span class="step__n">ping</span>
         <p class="step__txt">Both panes load the same server. Each one declares its pane, harness and repo.</p>
       </div>
       <div class="step">
-        <span class="step__n">2</span>
+        <span class="step__n">brief</span>
         <p class="step__txt">The driver briefs the peer once: same-level copilot, reads the repo, never writes.</p>
       </div>
       <div class="step">
-        <span class="step__n">3</span>
+        <span class="step__n">discuss</span>
         <p class="step__txt">Every plan and diff goes through discuss. The reply ends in one verdict.</p>
       </div>
     </div>
@@ -85,35 +86,39 @@ import Base from '../layouts/Base.astro';
 <section class="band band--verdicts" id="verdicts">
   <div class="inner">
     <h2 class="h2">It never just says yes.</h2>
-    <div class="verdicts">
-      <div class="verdict">
-        <span class="verdict__word">AGREE</span>
-        <p class="verdict__def">No corrections. Go ahead and build it.</p>
-      </div>
-      <div class="verdict">
-        <span class="verdict__word">ADJUST</span>
-        <p class="verdict__def">Fine once you fix the listed items — or argue one is wrong.</p>
-      </div>
-      <div class="verdict">
-        <span class="verdict__word">OBJECT</span>
-        <p class="verdict__def">Do not proceed as written. The reasons come with it.</p>
-      </div>
-      <div class="verdict">
-        <span class="verdict__word">ESCALATE</span>
-        <p class="verdict__def">Only the human can call this one. Stop and ask them.</p>
-      </div>
-      <div class="verdict">
-        <span class="verdict__word">UNPARSED</span>
-        <p class="verdict__def">The reply had no readable verdict line. Ask again.</p>
-      </div>
+    <div class="verdicts__lead">
+      <p>Every reply from the peer ends in one line: the word <code>VERDICT</code> and one of four calls. The driver reads that line before it does anything else.</p>
+      <p>The peer is a same-level copilot, not an approver. It reads the repo, runs read-only checks and disagrees when it disagrees. Looping to consensus and escalating stay with the caller. <strong>crossagent</strong> never decides for you.</p>
     </div>
-    <p class="verdicts__note">The peer is a same-level copilot, not an approver. It can read the repo and run read-only checks, and it disagrees when it disagrees. Looping to consensus and escalating are the caller's job — crossagent never decides for you.</p>
+    <dl class="verdicts">
+      <div class="verdict verdict--agree">
+        <dt class="verdict__word">AGREE</dt>
+        <dd class="verdict__def">No corrections. Go ahead and build it.<span class="verdict__next">The driver ships it as is.</span></dd>
+      </div>
+      <div class="verdict verdict--adjust">
+        <dt class="verdict__word">ADJUST</dt>
+        <dd class="verdict__def">Fine once the listed items are fixed.<span class="verdict__next">The driver fixes them, or argues back when one is wrong.</span></dd>
+      </div>
+      <div class="verdict verdict--object">
+        <dt class="verdict__word">OBJECT</dt>
+        <dd class="verdict__def">Do not proceed as written. The reasons come with it.<span class="verdict__next">The driver reworks the plan and asks again.</span></dd>
+      </div>
+      <div class="verdict verdict--escalate">
+        <dt class="verdict__word">ESCALATE</dt>
+        <dd class="verdict__def">Only the human can call this one.<span class="verdict__next">The driver stops and brings it to you.</span></dd>
+      </div>
+      <div class="verdict verdict--unparsed">
+        <dt class="verdict__word">UNPARSED</dt>
+        <dd class="verdict__def">Not a verdict. The reply had no readable <code>VERDICT</code> line.<span class="verdict__next">The driver asks again.</span></dd>
+      </div>
+    </dl>
   </div>
 </section>
 
 <section class="band band--install" id="install">
   <div class="inner">
-    <h2 class="h2">Runs in both.</h2>
+    <h2 class="h2">Install.</h2>
+    <h3 class="install__title install__title--step">1 &middot; Add the MCP</h3>
     <div class="installs">
       <div class="install">
         <h3 class="install__title">Claude Code</h3>
@@ -137,27 +142,77 @@ import Base from '../layouts/Base.astro';
       </div>
     </div>
     <div class="install install--wide">
-      <h3 class="install__title">Then link the pair skill (once, for both)</h3>
+      <h3 class="install__title">2 &middot; Link the pair skill</h3>
       <div class="copybox">
         <code class="copybox__cmd">npx -y crossagent-mcp setup --link</code>
-        <button class="copybox__btn" type="button" data-copy="npx -y crossagent-mcp setup --link" aria-label="Copy setup command">
+        <button class="copybox__btn" type="button" data-copy="npx -y crossagent-mcp setup --link" aria-label="Copy link skill command">
           <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
           <span class="copybox__label">copy</span>
         </button>
       </div>
     </div>
-    <p class="install__foot install__foot--cta">Using another coding agent? crossagent only needs a harness that runs in a tmux pane. Add yours and <a class="install__link" href="https://github.com/k8adev/crossagent" rel="noopener">open a pull request</a>.</p>
+    <p class="install__foot install__foot--cta">Using another coding agent? <strong>crossagent</strong> only needs a harness that runs in a tmux pane. Add yours and <a class="install__link" href="https://github.com/k8adev/crossagent" rel="noopener">open a pull request</a>.</p>
   </div>
 </section>
 
-<footer class="band band--foot">
-  <div class="inner foot">
-    <a class="foot__link" href="https://github.com/k8adev/crossagent">github.com/k8adev/crossagent</a>
+<footer class="tmuxbar" aria-label="Site footer">
+  <div class="tmuxbar__inner">
+    <span class="tmuxbar__session">[crossagent]</span>
+    <nav class="tmuxbar__windows" aria-label="Sections">
+      <a class="tmuxbar__win" href="#pair" data-win="pair">0:pair<span class="tmuxbar__flag"></span></a>
+      <a class="tmuxbar__win" href="#how-it-works" data-win="how-it-works">1:how-it-works<span class="tmuxbar__flag"></span></a>
+      <a class="tmuxbar__win" href="#verdicts" data-win="verdicts">2:verdicts<span class="tmuxbar__flag"></span></a>
+      <a class="tmuxbar__win" href="#install" data-win="install">3:install<span class="tmuxbar__flag"></span></a>
+    </nav>
+
+    <div class="tmuxbar__right">
+      <a class="tmuxbar__me" href="https://github.com/k8adev" rel="me">
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+        </svg>
+        <span>k8adev</span>
+      </a>
+      <a class="tmuxbar__me" href="https://x.com/k8adev" rel="me">
+        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        <span>k8adev</span>
+      </a>
+      <a class="tmuxbar__lic" href="https://github.com/k8adev/crossagent/blob/main/LICENSE">MIT</a>
+    </div>
   </div>
 </footer>
 </Base>
 
 <script>
+/* tmux window flags: * = section on screen, - = the one before it */
+(function(){
+  var wins=Array.prototype.slice.call(document.querySelectorAll<HTMLElement>('.tmuxbar__win[data-win]'));
+  var sections=wins.map(function(w){return document.getElementById(w.getAttribute('data-win')||'');}).filter(Boolean) as HTMLElement[];
+  if(sections.length<2)return;
+  var current='',last='',queued=false;
+  var paint=function(){
+    wins.forEach(function(w){
+      var id=w.getAttribute('data-win');
+      w.classList.toggle('tmuxbar__win--current',id===current);
+      w.classList.toggle('tmuxbar__win--last',id===last);
+    });
+  };
+  var pick=function(){
+    queued=false;
+    var probe=window.innerHeight*0.4;
+    var best=sections[0].id;
+    for(var i=0;i<sections.length;i++){
+      if(sections[i].getBoundingClientRect().top<=probe)best=sections[i].id;
+    }
+    if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2)best=sections[sections.length-1].id;
+    if(best!==current){last=current;current=best;paint();}
+  };
+  var onScroll=function(){if(!queued){queued=true;requestAnimationFrame(pick);}};
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  pick();
+})();
 document.querySelectorAll<HTMLElement>('.copybox__btn').forEach(function(btn){
   btn.addEventListener('click',function(){
     var label=btn.querySelector('.copybox__label');

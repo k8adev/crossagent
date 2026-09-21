@@ -36,7 +36,6 @@ a{color:inherit}
 .band--steps{background:var(--bone);color:var(--ink)}
 .band--verdicts{background:var(--emerald)}
 .band--install{background:var(--signal);color:var(--ink)}
-.band--foot{background:var(--ink);border-bottom:0}
 
 .inner{max-width:1240px;margin:0 auto}
 
@@ -125,7 +124,18 @@ h1 .reviews{font-style:normal;color:var(--signal)}
 .hero__for dt{color:var(--signal);font-weight:700;margin-top:.5rem}
 .hero__for dd{margin:0}
 
-.hero__install{margin-top:2.2rem;max-width:30rem}
+.btn{
+  display:inline-block;
+  border:var(--line);border-radius:0;
+  box-shadow:var(--drop);
+  font:700 .9rem/1 'Space Mono',monospace;letter-spacing:.06em;text-transform:uppercase;
+  padding:1rem 1.6rem;
+  cursor:pointer;text-decoration:none;
+}
+.btn--primary{background:var(--signal);color:var(--ink)}
+.btn--primary:hover{background:var(--bone)}
+.btn--primary:focus-visible{outline:3px solid var(--bone);outline-offset:3px}
+.hero__cta{margin-top:2.2rem}
 .copybox{
   display:flex;align-items:center;gap:.75rem;
   background:var(--ink);color:var(--bone);
@@ -314,6 +324,15 @@ h1 .reviews{font-style:normal;color:var(--signal)}
   margin-bottom:clamp(2rem,4vw,3.5rem);
 }
 
+.band--steps .h2{margin-bottom:1.4rem}
+.steps__lead{
+  max-width:60ch;
+  font-size:clamp(1.05rem,1.4vw,1.25rem);
+  line-height:1.5;
+  margin-bottom:clamp(2rem,4vw,3.5rem);
+}
+.steps__lead p+p{margin-top:1em}
+
 .steps{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -332,9 +351,12 @@ h1 .reviews{font-style:normal;color:var(--signal)}
 
 .step__n{
   font-family:'Archivo Black',sans-serif;
-  font-size:clamp(3.5rem,8vw,6rem);
-  line-height:.8;
+  font-size:clamp(2rem,3.6vw,3rem);
+  line-height:.9;
+  letter-spacing:-.02em;
+  text-transform:uppercase;
   color:var(--ultra);
+  overflow-wrap:anywhere;
 }
 
 .step__txt{
@@ -358,11 +380,29 @@ h1 .reviews{font-style:normal;color:var(--signal)}
 
 /* ---- verdicts ------------------------------------------------------- */
 
-.verdicts{border-top:var(--line)}
+.band--verdicts .h2{margin-bottom:1.4rem}
+
+.verdicts__lead{
+  max-width:60ch;
+  font-size:clamp(1.05rem,1.4vw,1.25rem);
+  line-height:1.5;
+  margin-bottom:clamp(2rem,4vw,3.5rem);
+}
+.verdicts__lead p+p{margin-top:1em}
+.verdicts__lead code,
+.verdict__def code{
+  font-family:'Space Mono',monospace;
+  font-size:.85em;
+  background:var(--ink);
+  color:var(--bone);
+  padding:.1em .4em;
+}
+
+.verdicts{border-top:var(--line);margin:0}
 
 .verdict{
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);
   gap:1rem clamp(1rem,3vw,3rem);
   align-items:center;
   padding:clamp(1rem,2.2vw,1.6rem) 0;
@@ -375,27 +415,27 @@ h1 .reviews{font-style:normal;color:var(--signal)}
   font-size:clamp(2.1rem,7vw,5rem);
   line-height:.95;
   letter-spacing:-.04em;
+  color:var(--bone);
 }
 
-.verdict:nth-child(1) .verdict__word,
-.verdict:nth-child(5) .verdict__word{color:var(--bone)}
+.verdict--adjust .verdict__word,
+.verdict--object .verdict__word,
+.verdict--escalate .verdict__word{color:var(--signal)}
 
-.verdict:nth-child(2) .verdict__word{color:var(--signal)}
-.verdict:nth-child(3) .verdict__word{color:var(--signal)}
-.verdict:nth-child(4) .verdict__word{color:var(--signal)}
+.verdict--unparsed .verdict__word{color:var(--bone);opacity:.55}
 
 .verdict__def{
+  margin:0;
   font-size:clamp(1rem,1.5vw,1.2rem);
   line-height:1.5;
-  max-width:40ch;
+  max-width:44ch;
 }
 
-.verdicts__note{
-  font-family:'Space Mono',monospace;
-  font-size:.85rem;
-  margin-top:2.4rem;
-  max-width:64ch;
-  line-height:1.9;
+.verdict__next{
+  display:block;
+  margin-top:.35em;
+  font-size:.85em;
+  color:#A9D8C2;
 }
 
 /* ---- install -------------------------------------------------------- */
@@ -417,13 +457,14 @@ h1 .reviews{font-style:normal;color:var(--signal)}
 
 .install__foot{
   margin-top:clamp(1.6rem,3vw,2.4rem);
-  font-family:'Space Mono',monospace;
-  font-size:.85rem;
-  line-height:1.8;
+  font-size:clamp(1rem,1.3vw,1.15rem);
+  line-height:1.5;
+  max-width:60ch;
 }
 
 .install--wide{margin-top:clamp(1.6rem,3vw,2.4rem)}
-.install__foot--cta{margin-top:2.4rem;max-width:64ch;color:var(--ink)}
+.install__title--step{margin-bottom:1.4rem}
+.install__foot--cta{margin-top:2.4rem;color:var(--ink)}
 .install__link{color:var(--ink);font-weight:700;text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px}
 .install__link:hover{background:var(--ink);color:var(--bone);text-decoration:none}
 .install__foot code{
@@ -434,34 +475,59 @@ h1 .reviews{font-style:normal;color:var(--signal)}
 
 /* ---- footer --------------------------------------------------------- */
 
-.foot{
+.band--install{border-bottom:0}
+
+/* ---- tmux status bar ------------------------------------------------- */
+
+.tmuxbar{
+  background:var(--ink);
+  color:var(--signal);
+  font:400 .8rem/1 'Space Mono',monospace;
+  padding:.45rem clamp(1rem,5vw,5rem);
+  border-top:var(--line);
+}
+
+.tmuxbar__inner{
+  max-width:1240px;
+  margin:0 auto;
   display:flex;
   flex-wrap:wrap;
-  gap:1rem clamp(1.5rem,4vw,3rem);
-  align-items:baseline;
+  align-items:center;
+  gap:.4rem 1.1rem;
 }
 
-.foot__link{
-  font-family:'Archivo Black',sans-serif;
-  font-size:clamp(1.4rem,3.5vw,2.4rem);
-  text-transform:uppercase;
-  letter-spacing:-.02em;
-  text-decoration:none;
-  border-bottom:6px solid var(--signal);
-}
+.tmuxbar__session{font-weight:700}
 
-.foot__link:hover,
-.foot__link:focus-visible{color:var(--signal)}
+.tmuxbar__windows{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem}
 
-.foot__meta{
-  font-family:'Space Mono',monospace;
-  font-size:.8rem;
+.tmuxbar__win,
+.tmuxbar__me,
+.tmuxbar__lic{color:inherit;text-decoration:none;white-space:nowrap}
+
+.tmuxbar__win--current{font-weight:700}
+.tmuxbar__win--current .tmuxbar__flag::after{content:'*'}
+.tmuxbar__win--last .tmuxbar__flag::after{content:'-'}
+
+.tmuxbar__win:hover,
+.tmuxbar__me:hover,
+.tmuxbar__lic:hover,
+.tmuxbar__win:focus-visible,
+.tmuxbar__me:focus-visible,
+.tmuxbar__lic:focus-visible{background:var(--signal);color:var(--ink);outline:0}
+
+.tmuxbar__right{
   margin-left:auto;
-  color:#8A8578;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:.4rem 1.1rem;
 }
 
-a:focus-visible,
-.foot__link:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
+.tmuxbar__me{display:inline-flex;align-items:center;gap:.35em}
+.tmuxbar__me svg{display:block}
+
+
+a:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
 
 /* ---- responsive ----------------------------------------------------- */
 
@@ -472,7 +538,6 @@ a:focus-visible,
   .steps{grid-template-columns:1fr}
   .installs{grid-template-columns:1fr}
   .verdict{grid-template-columns:1fr;gap:.35rem}
-  .foot__meta{margin-left:0;width:100%}
 }
 
 @media (max-width:520px){
@@ -490,6 +555,7 @@ a:focus-visible,
   background:var(--ink);
   color:var(--bone);
   border-bottom:var(--line);
+  padding:.6rem clamp(1rem,5vw,5rem);
 }
 
 .topbar__inner{
@@ -497,8 +563,8 @@ a:focus-visible,
   margin:0 auto;
   display:flex;
   align-items:center;
+  justify-content:space-between;
   gap:clamp(1rem,3vw,2.5rem);
-  padding:.6rem clamp(1rem,5vw,5rem);
 }
 
 .topbar__mark{
@@ -509,29 +575,6 @@ a:focus-visible,
   text-decoration:none;
   flex:none;
 }
-
-.topbar__nav{
-  display:flex;
-  align-items:center;
-  gap:clamp(.9rem,2vw,1.8rem);
-  min-width:0;
-  overflow-x:auto;
-  scrollbar-width:none;
-}
-.topbar__nav::-webkit-scrollbar{display:none}
-
-.topbar__link{
-  font:700 .68rem/1 'Space Mono',monospace;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  text-decoration:none;
-  white-space:nowrap;
-  padding:.35rem 0;
-  border-bottom:3px solid transparent;
-}
-
-.topbar__link:hover,
-.topbar__link:focus-visible{color:var(--signal);border-bottom-color:var(--signal)}
 
 .topbar__star{
   flex:none;
@@ -552,17 +595,14 @@ a:focus-visible,
 
 .topbar__star:hover{background:var(--signal);color:var(--ink);border-color:var(--ink)}
 
-.topbar__star-count{
-  padding-left:.4rem;
-  border-left:2px solid currentColor;
-}
+.topbar__star svg{display:block;width:14px;height:14px;flex:none}
+.topbar__star-count{display:block;line-height:1;font-variant-numeric:tabular-nums}
 
 /* anchor targets clear the sticky bar */
 .band{scroll-margin-top:4rem}
 
 @media (max-width:720px){
-  .topbar__inner{gap:.9rem;padding:.55rem 1rem}
+  .topbar{padding:.55rem 1rem}
+  .topbar__inner{gap:.9rem}
   .topbar__mark{font-size:.85rem}
-  .topbar__star-label{display:none}
-  .topbar__star-count{padding-left:0;border-left:0}
 }
