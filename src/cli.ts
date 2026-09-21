@@ -32,7 +32,14 @@ args = ["-y", "crossagent-mcp"]
 ## Skill
 
 The \`pair\` skill (skills/pair/SKILL.md) teaches the driver agent how to use these
-tools to pair-program with a peer pane. Link it into your personal skill dirs:
+tools to pair-program with a peer pane.
+
+It is also exposed as an MCP prompt named \`pair\`, so \`mcp add\` alone is enough —
+in Claude Code, run it as /mcp__crossagent__pair. That prompt is Claude Code only
+and user-invoked; the server \`instructions\` and tool descriptions are what carry
+the protocol to the model in both hosts.
+
+Link the skill into your personal skill dirs to have it proactively loaded instead:
 
   crossagent-mcp setup --link
 

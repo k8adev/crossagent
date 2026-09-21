@@ -1,4 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  ErrorCode,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  McpError,
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { register, computeState } from "./bootstrap.js";
 import { discoverPeers, parsePanes, LIST_PANES_FORMAT, type PaneRecord, type PeerScope } from "./discovery.js";
@@ -6,6 +12,7 @@ import { send, capture, setPaneOption, getPaneOption, waitIdle, WaitIdleTimeoutE
 import { loadConfig, getIdleRegex, getBusyRegex, getResetCommand } from "./config.js";
 import { briefPreamble, reviewPreamble, extractReview, type ReviewKind } from "./protocol.js";
 import { matchKnownHarness } from "./harness.js";
+import { loadPairSkill } from "./skill.js";
 
 /** Pane option set once brief() completes with AGREE; discuss() checks it to decide whether to (re-)brief first. */
 const BRIEFED_OPTION = "@crossagent_briefed";
@@ -46,17 +53,118 @@ function ownPaneUnresolvedError(reason: string | undefined): string {
   return `crossagent could not resolve its own tmux pane (${reason ?? "unknown reason"}) — pass \`pane\` explicitly where supported.`;
 }
 
-export function createServer(): McpServer {
-  const server = new McpServer({
-    name: "crossagent-mcp",
-    version: "0.1.0",
+/**
+ * Sent on `initialize` and the main thing an agent sees when crossagent was added with `mcp add`
+ * alone: the `pair` prompt is user-invoked and Claude Code-only, so the decision rules have to
+ * live here and in the tool descriptions. Claude Code truncates instructions at 2048 chars.
+ */
+export const SERVER_INSTRUCTIONS = [
+  "crossagent pairs you with a peer coding agent running in another tmux pane. You are the driver: you plan, implement and decide. The peer is a same-level copilot that reads the repo and runs read-only checks, never writes, and is not an approver \u2014 treat its disagreement as signal, not a veto.",
+  "",
+  "Sequence: `ping` once to register your pane, `list_peers` to find the peer (one peer \u2192 use it; none \u2192 say so and continue solo; several \u2192 ask the human which), then `discuss` for every round. `discuss` briefs the peer automatically the first time; call `brief` yourself only to reset a stale peer session with `force: true`.",
+  "",
+  "Call `discuss` after drafting a plan and before writing code (`kind: \"plan\"`), after implementing and tests pass but before committing or opening a PR (`kind: \"implementation\"`), and on an architectural fork you cannot settle alone (`kind: \"question\"`). Every message must be self-contained, with the diff or concrete `file:line` pointers \u2014 the peer has not seen your turns.",
+  "",
+  "Each reply comes back as `{ verdict, rationale, round }`, the peer having ended its answer with one `VERDICT:` line. AGREE: proceed. ADJUST: apply the listed corrections, or argue back with facts if one is wrong, then re-`discuss` only the delta. OBJECT: do not proceed as-is; fix or argue, then re-`discuss`. ESCALATE: stop and put the peer's exact question to the human with both positions and what each costs \u2014 never resolve it yourself. UNPARSED: ask the peer to re-send in the `REVIEW:` / `VERDICT:` shape.",
+  "",
+  "Cap each topic at 3 rounds. If round 3 is still not AGREE, stop looping and report both positions to the human; do not average them or re-ask hoping for a different answer.",
+  "",
+  "Never send secrets or personal data to the peer, and never ask it to edit, create or delete anything. The full protocol is also available as the `pair` prompt.",
+].join("\n");
+
+/** The `pair` prompt's declared arguments, both optional — hosts may omit `arguments` entirely. */
+const PAIR_PROMPT_ARGUMENTS = [
+  {
+    name: "pane",
+    description: "tmux pane id of the peer to pair with, e.g. %13. Omit to let list_peers resolve it.",
+    required: false,
+  },
+  {
+    name: "kind",
+    description: "What you are bringing to the peer first: plan, implementation, or question.",
+    required: false,
+  },
+];
+
+const PAIR_PROMPT = {
+  name: "pair",
+  title: "Pair with the agent in the next tmux pane",
+  description:
+    "The full crossagent pairing protocol: brief the peer pane as a same-level copilot, discuss plans and implementations, handle each verdict, and escalate decisions only the human can make.",
+  arguments: PAIR_PROMPT_ARGUMENTS,
+};
+
+/**
+ * Exposes the `pair` skill as an MCP prompt, so `mcp add` alone gives an agent the full pairing
+ * protocol (Claude Code surfaces it as `/mcp__crossagent__pair`) without `setup --link`.
+ *
+ * Registered on the raw Server rather than via `McpServer.registerPrompt` because that helper
+ * validates `params.arguments` against an object schema built from the declared shape, which
+ * rejects a request that omits `arguments` altogether. The spec makes that field optional and
+ * Claude Code omits it when the user invokes the prompt with no input, so both arguments being
+ * optional has to mean the whole object may be absent.
+ */
+function registerPairPrompt(server: McpServer): void {
+  server.server.registerCapabilities({ prompts: {} });
+
+  server.server.setRequestHandler(ListPromptsRequestSchema, () => ({ prompts: [PAIR_PROMPT] }));
+
+  server.server.setRequestHandler(GetPromptRequestSchema, (request) => {
+    if (request.params.name !== PAIR_PROMPT.name) {
+      throw new McpError(ErrorCode.InvalidParams, `Prompt ${request.params.name} not found`);
+    }
+
+    const args = request.params.arguments ?? {};
+    const text = pairPromptText(args.pane, args.kind);
+    return {
+      description: PAIR_PROMPT.description,
+      messages: [
+        {
+          role: "user" as const,
+          content: { type: "text" as const, text },
+        },
+      ],
+    };
   });
+}
+
+/** Skill body with a preamble naming the requested pane/kind; a missing skill file degrades to its error text. */
+function pairPromptText(pane: string | undefined, kind: string | undefined): string {
+  let skill: string;
+  try {
+    skill = loadPairSkill();
+  } catch (error) {
+    return (error as Error).message;
+  }
+  return pairPreamble(pane, kind) + skill;
+}
+
+/** One line naming the concrete pane/kind the caller asked for, prepended to the generic skill text. */
+function pairPreamble(pane: string | undefined, kind: string | undefined): string {
+  const parts: string[] = [];
+  if (pane) parts.push(`Pair with the peer in tmux pane ${pane}`);
+  if (kind) parts.push(`${pane ? "b" : "B"}ring it a ${kind} in the first \`discuss\` round`);
+  if (parts.length === 0) return "";
+  return `${parts.join(", and ")}. Follow this protocol:\n\n`;
+}
+
+export function createServer(): McpServer {
+  const server = new McpServer(
+    {
+      name: "crossagent-mcp",
+      version: "0.1.0",
+    },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
+
+  registerPairPrompt(server);
 
   server.registerTool(
     "ping",
     {
       title: "Ping",
-      description: "Registers this pane's identity and returns pane/harness/repo/mode.",
+      description:
+        "Declares this pane's identity (harness, repo, pid) onto its tmux pane so peers can discover it, and reports back pane/harness/repo plus mode. Call it once at the start of a pairing session, before list_peers. Returns mode \"degraded\" with a reason when no tmux pane could be resolved, in which case pane-taking tools need an explicit `pane`.",
       inputSchema: {},
     },
     async () => {
@@ -78,9 +186,15 @@ export function createServer(): McpServer {
     "list_peers",
     {
       title: "List peers",
-      description: "Lists other crossagent-visible tmux panes, scoped to repo, window, or all.",
+      description:
+        "Lists the other tmux panes you could pair with, so you can pick the peer pane id for brief/discuss. Call it after ping: exactly one peer means use it for the whole session, none means pair-programming is unavailable, several means ask the human which one. Each entry reports the pane id, harness and repo, and `declared: false` for a peer that has not run crossagent yet (still reachable).",
       inputSchema: {
-        scope: z.enum(["repo", "window", "all"]).default("repo"),
+        scope: z
+          .enum(["repo", "window", "all"])
+          .default("repo")
+          .describe(
+            "\"repo\" (default) keeps only panes working on the same git repo, \"window\" only panes in this tmux window, \"all\" every other pane on the tmux server.",
+          ),
       },
     },
     async ({ scope }) => {
@@ -118,10 +232,11 @@ export function createServer(): McpServer {
     "send",
     {
       title: "Send",
-      description: "Sends literal text followed by Enter to a tmux pane.",
+      description:
+        "Low-level primitive: types literal text plus Enter into a tmux pane and returns immediately, without briefing, waiting, or parsing anything. Prefer `discuss`, which does the whole round; reach for `send` only to drive a pane outside the pairing protocol. Returns `{ sent: true }`.",
       inputSchema: {
-        pane: z.string(),
-        text: z.string(),
+        pane: z.string().describe("tmux pane id to type into, e.g. %13."),
+        text: z.string().describe("Literal text to type; Enter is appended for you."),
       },
     },
     async ({ pane, text }) => {
@@ -138,10 +253,11 @@ export function createServer(): McpServer {
     "read",
     {
       title: "Read",
-      description: "Captures the last N lines from a tmux pane.",
+      description:
+        "Low-level primitive: captures the last N lines currently visible in a tmux pane, whatever state that pane is in. Use it to inspect a pane directly (e.g. to see why a peer stalled); for a review round prefer `discuss`, which waits and parses the verdict for you. Returns the raw captured text.",
       inputSchema: {
-        pane: z.string(),
-        lines: z.number().int().positive().default(200),
+        pane: z.string().describe("tmux pane id to capture from, e.g. %13."),
+        lines: z.number().int().positive().default(200).describe("How many trailing lines to capture (default 200)."),
       },
     },
     async ({ pane, lines }) => {
@@ -158,10 +274,11 @@ export function createServer(): McpServer {
     "wait_reply",
     {
       title: "Wait for reply",
-      description: "Waits until a peer pane's harness becomes idle, then returns the new content.",
+      description:
+        "Low-level primitive: blocks until the pane's harness prompt looks idle again, then returns only the content that appeared since the call started. Pair it with `send` when driving a pane outside the protocol; for a review round prefer `discuss`, which sends, waits and parses in one call. Errors with the last output if the pane never goes idle before the timeout.",
       inputSchema: {
-        pane: z.string(),
-        timeout_ms: z.number().int().positive().optional(),
+        pane: z.string().describe("tmux pane id to watch, e.g. %13."),
+        timeout_ms: z.number().int().positive().optional().describe("How long to wait for idle before giving up (defaults to the configured timeout, 5 min)."),
       },
     },
     async ({ pane, timeout_ms }) => {
@@ -200,10 +317,11 @@ export function createServer(): McpServer {
     "brief",
     {
       title: "Brief",
-      description: "Sends the pairing-protocol role brief to a peer pane and waits for its VERDICT: AGREE.",
+      description:
+        "Resets the peer pane's conversation and sends the role preamble that makes it a read-only same-level reviewer bound to the VERDICT contract \u2014 once per peer session, since `discuss` briefs automatically when needed. Call it explicitly up front, or with `force: true` to re-brief a peer whose session went stale or off-protocol. Returns once the peer answers `VERDICT: AGREE`; any other verdict means the peer did not accept the role.",
       inputSchema: {
-        pane: z.string().optional(),
-        force: z.boolean().default(false),
+        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
+        force: z.boolean().default(false).describe("Re-brief a pane that is already marked briefed (default false, which makes an already-briefed pane a no-op)."),
       },
     },
     async ({ pane, force }) => {
@@ -244,12 +362,18 @@ export function createServer(): McpServer {
     "discuss",
     {
       title: "Discuss",
-      description: "Sends a review message to a peer pane (briefing it first if needed), waits for its reply, and parses the VERDICT: line.",
+      description:
+        "The main pairing call: briefs the peer if it has not been briefed, sends your message under a kind-specific review preamble, waits for the peer's reply and returns `{ verdict, rationale, round }`. Send a self-contained message with concrete `file:line` pointers or the diff \u2014 the peer has its own context and has not seen your turns. Handle the verdict: AGREE proceed; ADJUST apply the corrections or argue back, then re-`discuss` the delta; OBJECT do not proceed as-is; ESCALATE stop and put the question to the human, never decide it yourself; UNPARSED (raw reply included) ask the peer to re-send in the `REVIEW:` / `VERDICT:` shape. Cap a topic at 3 rounds, then report both positions to the human; a timeout comes back as an error with the peer's last output.",
       inputSchema: {
-        pane: z.string().optional(),
-        message: z.string(),
-        kind: z.enum(["plan", "implementation", "question"]).default("implementation"),
-        timeout_ms: z.number().int().positive().optional(),
+        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
+        message: z.string().describe("The self-contained plan, diff, or question to review, with concrete paths."),
+        kind: z
+          .enum(["plan", "implementation", "question"])
+          .default("implementation")
+          .describe(
+            "\"plan\" before any code is written, \"implementation\" for a finished diff before committing (default), \"question\" for an architectural fork that is neither.",
+          ),
+        timeout_ms: z.number().int().positive().optional().describe("How long to wait for the peer's reply (defaults to the configured timeout, 5 min)."),
       },
     },
     async ({ pane, message, kind, timeout_ms }) => runDiscuss(pane, message, kind, timeout_ms),
@@ -259,11 +383,12 @@ export function createServer(): McpServer {
     "ask_review",
     {
       title: "Ask review",
-      description: "Alias of discuss with kind 'implementation', kept for compatibility.",
+      description:
+        "Compatibility alias for `discuss` with `kind: \"implementation\"` \u2014 same briefing, waiting, verdict parsing and round counting, with the message named `prompt`. Prefer `discuss`, which also offers the \"plan\" and \"question\" kinds. Returns the same `{ verdict, rationale, round }`.",
       inputSchema: {
-        pane: z.string().optional(),
-        prompt: z.string(),
-        timeout_ms: z.number().int().positive().optional(),
+        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
+        prompt: z.string().describe("The self-contained implementation/diff to review, with concrete paths."),
+        timeout_ms: z.number().int().positive().optional().describe("How long to wait for the peer's reply (defaults to the configured timeout, 5 min)."),
       },
     },
     async ({ pane, prompt, timeout_ms }) => runDiscuss(pane, prompt, "implementation", timeout_ms),

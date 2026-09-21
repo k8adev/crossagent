@@ -62,6 +62,12 @@ only via the repo-path heuristic above, not by its declared identity.
 All tool errors come back as `isError: true` content — no thrown exceptions
 cross the MCP boundary.
 
+## Prompts
+
+| Prompt | Arguments | Description |
+| --- | --- | --- |
+| `pair` | `pane?` (e.g. `%13`), `kind?: "plan" \| "implementation" \| "question"` | The full pairing protocol (the `pair` skill body) as a single user message. |
+
 ## Pairing protocol
 
 `brief` and `discuss` implement a lightweight review protocol on top of the raw
@@ -160,6 +166,24 @@ escalate to the human on decisions that aren't the agent's to make.
 Both Claude Code and Codex CLI read the same `SKILL.md` format (YAML
 frontmatter with `name` and `description`), and both follow symlinked skill
 directories, so one skill directory serves both hosts.
+
+### Zero-setup: MCP prompt
+
+The same protocol ships as an MCP prompt named `pair`, so `mcp add` alone is
+enough — no symlink required. In Claude Code it shows up as the slash command
+`/mcp__crossagent__pair`, with optional `pane` (e.g. `%13`) and `kind`
+(`plan` | `implementation` | `question`) arguments. Note this is **Claude Code
+only and user-invoked**: Codex CLI does not expose MCP prompts yet, and the
+prompt's text is not visible to the model until the user runs it.
+
+What actually makes `mcp add` sufficient in both hosts is the server
+`instructions` sent on `initialize` plus the tool descriptions — together they
+carry when to pair, the `list_peers → brief → discuss` sequence, the
+`VERDICT: AGREE|ADJUST|OBJECT|ESCALATE` contract and what each verdict means,
+the 3-round cap, and that `ESCALATE` means stop and ask the human.
+
+`setup --link` remains the way to have the skill proactively loaded in both
+Claude Code and Codex, rather than only on demand.
 
 Link it into your personal skill dirs:
 
