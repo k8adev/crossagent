@@ -1,0 +1,170 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="crossagent — your agent needs a second opinion"
+  description="crossagent pairs the coding agent in one tmux pane with the one next to it. One writes, the other pushes back, before you ever see the diff."
+>
+
+<header class="band band--hero" id="pair">
+  <div class="inner hero">
+    <div class="hero__copy">
+      <h1><span class="nb">Your agent</span><br><span class="nb">needs a <em class="reviews">second</em></span><br><em class="reviews">opinion.</em></h1>
+      <p class="hero__sub">crossagent pairs the coding agent in one tmux pane with the one next to it. One writes, the other pushes back, before you ever see the diff.</p>
+
+      <dl class="hero__for">
+        <dt>FOR</dt>
+        <dd>developers who already run more than one coding agent, from different providers, side by side in tmux.</dd>
+        <dt>NOT FOR</dt>
+        <dd>a single agent, an IDE-only setup, or anything outside a terminal multiplexer.</dd>
+      </dl>
+
+      <div class="copybox hero__install">
+        <code class="copybox__cmd" id="install-cmd">npx -y crossagent-mcp setup --link</code>
+        <button class="copybox__btn" type="button" data-copy="npx -y crossagent-mcp setup --link" aria-label="Copy install command">
+          <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span class="copybox__label">copy</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="hero__stack">
+      <div class="win hero__win hero__win--driver">
+        <div class="win__bar">
+          <span class="win__title">pane %1 — Claude Code</span>
+          <span class="win__btns"><span class="win__btn"></span><span class="win__btn"></span></span>
+        </div>
+        <div class="win__body driver__body">
+          <span class="ln dv-ln dv-ln--0 entry"><span class="dot"></span><span>Migration written. Before shipping, checking with my pair that it follows the spec&hellip;</span></span>
+          <span class="ln dv-ln dv-ln--1 dv-call"><span class="dot dot--call"></span>Calling crossagent <span class="dv-timer dv-timer--a"></span></span>
+          <span class="ln dv-ln dv-spin"><span class="spin-star">&#10033;</span> <span class="spin-word"></span></span>
+          <span class="ln dv-ln dv-ln--9 entry"><span class="dot"></span><span>Peer wants a rollback path. Adding it.</span></span>
+          <span class="ln dv-ln dv-ln--10 entry"><span class="dot dot--reply"></span><span>Update(migrations/0007_add_index.ts)</span></span>
+          <span class="ln dv-ln dv-spin dv-spin--2"><span class="spin-star">&#10033;</span> <span class="spin-word spin-word--2"></span></span>
+        </div>
+      </div>
+
+      <div class="win hero__win hero__win--reviewer">
+        <div class="win__bar">
+          <span class="win__title">pane %2 — Codex</span>
+          <span class="win__btns"><span class="win__btn"></span><span class="win__btn"></span></span>
+        </div>
+        <div class="win__body reviewer__body">
+          <div class="rv-input rv-ln rv-ln--4 entry"><span class="chev">&rsaquo;</span><span>Hi Astra, Fable here. I just wrote the 0007_add_index migration. Check that it meets the spec.</span></div>
+          <span class="ln rv-ln rv-ln--5"><span class="dot dot--rv5"></span>Ran git diff --stat</span>
+          <span class="ln rv-ln rv-ln--6"><span class="dot dot--rv6"></span>Ran read 0007_add_index.ts</span>
+          <span class="ln rv-ln rv-ln--7 entry"><span class="dot"></span><span><span class="ln--verdict">VERDICT: ADJUST</span> The migration has no rollback. Add a down() step before shipping.</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+
+<section class="band band--steps" id="calls">
+  <div class="inner">
+    <h2 class="h2">Three calls</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="step__n">1</span>
+        <p class="step__txt">Both panes load the same server. Each one declares its pane, harness and repo.</p>
+      </div>
+      <div class="step">
+        <span class="step__n">2</span>
+        <p class="step__txt">The driver briefs the peer once: same-level copilot, reads the repo, never writes.</p>
+      </div>
+      <div class="step">
+        <span class="step__n">3</span>
+        <p class="step__txt">Every plan and diff goes through discuss. The reply ends in one verdict.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band band--verdicts" id="verdicts">
+  <div class="inner">
+    <h2 class="h2">It never just says yes.</h2>
+    <div class="verdicts">
+      <div class="verdict">
+        <span class="verdict__word">AGREE</span>
+        <p class="verdict__def">No corrections. Go ahead and build it.</p>
+      </div>
+      <div class="verdict">
+        <span class="verdict__word">ADJUST</span>
+        <p class="verdict__def">Fine once you fix the listed items — or argue one is wrong.</p>
+      </div>
+      <div class="verdict">
+        <span class="verdict__word">OBJECT</span>
+        <p class="verdict__def">Do not proceed as written. The reasons come with it.</p>
+      </div>
+      <div class="verdict">
+        <span class="verdict__word">ESCALATE</span>
+        <p class="verdict__def">Only the human can call this one. Stop and ask them.</p>
+      </div>
+      <div class="verdict">
+        <span class="verdict__word">UNPARSED</span>
+        <p class="verdict__def">The reply had no readable verdict line. Ask again.</p>
+      </div>
+    </div>
+    <p class="verdicts__note">The peer is a same-level copilot, not an approver. It can read the repo and run read-only checks, and it disagrees when it disagrees. Looping to consensus and escalating are the caller's job — crossagent never decides for you.</p>
+  </div>
+</section>
+
+<section class="band band--install" id="install">
+  <div class="inner">
+    <h2 class="h2">Runs in both.</h2>
+    <div class="installs">
+      <div class="install">
+        <h3 class="install__title">Claude Code</h3>
+        <div class="copybox">
+          <code class="copybox__cmd">claude mcp add crossagent -- npx -y crossagent-mcp</code>
+          <button class="copybox__btn" type="button" data-copy="claude mcp add crossagent -- npx -y crossagent-mcp" aria-label="Copy Claude Code command">
+            <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span class="copybox__label">copy</span>
+          </button>
+        </div>
+      </div>
+      <div class="install">
+        <h3 class="install__title">Codex CLI</h3>
+        <div class="copybox">
+          <code class="copybox__cmd">codex mcp add crossagent -- npx -y crossagent-mcp</code>
+          <button class="copybox__btn" type="button" data-copy="codex mcp add crossagent -- npx -y crossagent-mcp" aria-label="Copy Codex CLI command">
+            <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span class="copybox__label">copy</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="install install--wide">
+      <h3 class="install__title">Then link the pair skill (once, for both)</h3>
+      <div class="copybox">
+        <code class="copybox__cmd">npx -y crossagent-mcp setup --link</code>
+        <button class="copybox__btn" type="button" data-copy="npx -y crossagent-mcp setup --link" aria-label="Copy setup command">
+          <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span class="copybox__label">copy</span>
+        </button>
+      </div>
+    </div>
+    <p class="install__foot install__foot--cta">Using another coding agent? crossagent only needs a harness that runs in a tmux pane. Add yours and <a class="install__link" href="https://github.com/k8adev/crossagent" rel="noopener">open a pull request</a>.</p>
+  </div>
+</section>
+
+<footer class="band band--foot">
+  <div class="inner foot">
+    <a class="foot__link" href="https://github.com/k8adev/crossagent">github.com/k8adev/crossagent</a>
+  </div>
+</footer>
+</Base>
+
+<script>
+document.querySelectorAll<HTMLElement>('.copybox__btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var label=btn.querySelector('.copybox__label');
+    if(!label)return;
+    var done=function(){btn.classList.add('is-copied');label.textContent='copied';setTimeout(function(){btn.classList.remove('is-copied');label.textContent='copy';},1600);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(btn.dataset.copy??'').then(done,function(){label.textContent='select & copy';});}
+    else{label.textContent='select & copy';}
+  });
+});
+</script>

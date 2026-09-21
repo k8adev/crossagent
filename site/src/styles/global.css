@@ -1,0 +1,568 @@
+@property --dv-t{syntax:'<integer>';inherits:true;initial-value:0}
+:root{
+  --ink:#0D0D0F;
+  --bone:#F2E9D8;
+  --ultra:#1B1AA8;
+  --emerald:#12724A;
+  --signal:#FF4D00;
+  --line:3px solid var(--ink);
+  --drop:8px 8px 0 var(--ink);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+html{-webkit-text-size-adjust:100%}
+
+body{
+  background:var(--ink);
+  color:var(--bone);
+  font-family:'Space Grotesk',system-ui,sans-serif;
+  font-size:17px;
+  line-height:1.45;
+  overflow-x:hidden;
+}
+
+a{color:inherit}
+
+/* ---- bands ---------------------------------------------------------- */
+
+.band{
+  padding:clamp(3rem,7vw,6rem) clamp(1rem,5vw,5rem);
+  border-bottom:6px solid var(--ink);
+  position:relative;
+}
+
+.band--hero{background:var(--ultra)}
+.band--steps{background:var(--bone);color:var(--ink)}
+.band--verdicts{background:var(--emerald)}
+.band--install{background:var(--signal);color:var(--ink)}
+.band--foot{background:var(--ink);border-bottom:0}
+
+.inner{max-width:1240px;margin:0 auto}
+
+/* ---- retro-OS window ------------------------------------------------ */
+
+.win{
+  background:var(--ink);
+  color:var(--bone);
+  border:var(--line);
+  box-shadow:var(--drop);
+}
+
+.win__bar{
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  padding:.3rem .45rem;
+  border-bottom:var(--line);
+  background:var(--chrome,var(--bone));
+  color:var(--chrometext,var(--ink));
+}
+
+.win__title{
+  font-family:'Space Mono',monospace;
+  font-weight:700;
+  font-size:.72rem;
+  letter-spacing:.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.win__btns{margin-left:auto;display:flex;gap:.3rem;flex-shrink:0}
+
+.win__btn{
+  width:13px;
+  height:13px;
+  border:2px solid var(--chrometext,var(--ink));
+  background:transparent;
+}
+
+.win__body{
+  padding:.9rem 1rem;
+  font-family:'Space Mono',monospace;
+  font-size:.82rem;
+  line-height:1.75;
+}
+
+/* ---- hero ----------------------------------------------------------- */
+
+.hero{
+  display:grid;
+  grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  gap:clamp(2rem,4vw,4rem);
+  align-items:start;
+}
+
+.hero__copy{container-type:inline-size;min-width:0}
+
+h1{
+  font-family:'Archivo Black',sans-serif;
+  font-size:min(clamp(2.6rem,6.6vw,6rem),11.4cqi);
+  line-height:.9;
+  letter-spacing:-.03em;
+  text-transform:uppercase;
+  text-wrap:balance;
+}
+h1 .nb{white-space:nowrap}
+
+h1 .reviews{font-style:normal;color:var(--signal)}
+
+.hero__sub{
+  max-width:34ch;
+  font-size:clamp(1.05rem,1.6vw,1.35rem);
+  margin-top:1.6rem;
+}
+
+.hero__for{
+  margin-top:1.4rem;
+  max-width:40ch;
+  font-family:'Space Mono',monospace;
+  font-size:.78rem;
+  line-height:1.55;
+  letter-spacing:.02em;
+}
+.hero__for dt{color:var(--signal);font-weight:700;margin-top:.5rem}
+.hero__for dd{margin:0}
+
+.hero__install{margin-top:2.2rem;max-width:30rem}
+.copybox{
+  display:flex;align-items:center;gap:.75rem;
+  background:var(--ink);color:var(--bone);
+  border:var(--line);
+  padding:.85rem 1rem;
+  font-family:'Space Mono',monospace;font-size:.82rem;line-height:1.5;
+}
+.copybox__cmd{flex:1;min-width:0;white-space:nowrap;overflow-x:auto}
+.copybox__btn{
+  flex:none;display:inline-flex;align-items:center;gap:.4rem;
+  background:var(--signal);color:var(--ink);
+  border:2px solid var(--ink);border-radius:0;
+  font:700 .68rem/1 'Space Mono',monospace;letter-spacing:.06em;text-transform:uppercase;
+  padding:.45rem .6rem;cursor:pointer;
+}
+.install__title{font:700 .78rem/1 'Space Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin:0 0 .7rem}
+.copybox__btn:hover{background:var(--bone)}
+.copybox__btn:focus-visible{outline:3px solid var(--bone);outline-offset:3px}
+.copybox__btn.is-copied{background:#5FE0A8}
+
+.hero__stack{
+  position:relative;
+  align-self:end;
+  min-height:480px;
+}
+
+.hero__win{position:absolute;width:74%}
+
+.hero__win--driver{
+  bottom:215px;
+  left:0;
+  --chrome:var(--signal);
+  --chrometext:var(--ink);
+  z-index:2;
+}
+
+.hero__win--reviewer{
+  bottom:0;
+  right:0;
+  --chrome:var(--emerald);
+  --chrometext:var(--bone);
+  z-index:1;
+}
+
+.hero__win--reviewer .win__bar{color:var(--bone)}
+
+.ln{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry{display:flex;align-items:flex-start;gap:.6em;white-space:normal;text-overflow:clip}
+.entry .dot{flex:none;margin:.6em 0 0;top:0}
+.entry .chev{flex:none;opacity:.7}
+.entry > span:last-child{min-width:0}
+.rv-input{background:#2A2A2E;color:#E6E6E6;padding:.7em 1em;margin:.15em 0 .6em;}
+.rv-input .ln{color:#E6E6E6}
+.hero__win{background:var(--ink);color:var(--bone)}
+.hero__win .win__body{background:var(--ink);color:var(--bone);padding:1.1rem 1.5rem 1.2rem}
+.hero__win .ln--verdict{color:#5FE0A8}
+.hero__win .dv-call{color:var(--bone)}
+.ln--cue{color:#8A8578}
+.ln--verdict{font-weight:700;color:var(--emerald)}
+.ln--label{font-weight:700}
+
+/* ---- hero exchange animation ----------------------------------------- */
+/* 24s loop, one shared timeline for both windows (percentages below match
+   1:1 across driver and reviewer keyframes so the exchange stays in sync).
+   Driver: MCP tool-call lines appear in order, "waiting for peer" line is
+   swapped for the answer, closing line is char-typed. Reviewer: idle+empty,
+   wakes with a ring, brief + discuss lines appear, ends in the same verdict. */
+
+@media (prefers-reduced-motion: no-preference){
+
+  .driver__body{min-height:10.5em}
+  .reviewer__body{min-height:10.5em}
+
+  .hero__win--driver,
+  .hero__win--reviewer{animation:24s steps(1,end) infinite}
+  .hero__win--driver{animation-name:driverFade}
+  .hero__win--reviewer{animation-name:reviewerFade}
+
+  /* whoever is speaking sits on top; the one underneath is always dimmed */
+  @keyframes driverFade{
+    0%,14%{opacity:1;z-index:2}
+    14.1%,63%{opacity:.45;z-index:1}
+    63.1%,100%{opacity:1;z-index:2}
+  }
+
+  @keyframes reviewerFade{
+    0%,14%{opacity:.45;z-index:1}
+    14.1%,63%{opacity:1;z-index:2}
+    63.1%,100%{opacity:.45;z-index:1}
+  }
+
+  /* every line: opacity 0->1 at its %, back to 0 at 94% for the reset */
+  .dv-ln,.rv-ln{opacity:0;animation:24s steps(1,end) infinite}
+  .dv-ln--0,.dv-ln--0b,.dv-ln--0c{animation-name:show3}
+  .dv-ln--1{animation-name:show10}
+      
+      .rv-ln--4{animation-name:show14}
+  .rv-ln--5{animation-name:show26}
+  .rv-ln--6{animation-name:show38}
+  .rv-ln--7{animation-name:show55}
+  .dv-ln--9{animation-name:show63}
+  .dv-ln--10{animation-name:show70}
+
+  @keyframes show3{0%,3%{opacity:0}3.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  @keyframes show10{0%,10%{opacity:0}10.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  @keyframes show14{0%,14%{opacity:0}14.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  @keyframes show26{0%,26%{opacity:0}26.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  @keyframes show38{0%,38%{opacity:0}38.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  @keyframes show63{0%,63%{opacity:0}63.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  @keyframes show70{0%,70%{opacity:0}70.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  @keyframes show55{0%,55%{opacity:0}55.1%,94%{opacity:1}94.1%,100%{opacity:0}}
+  /* waiting line: visible 20-48%, then replaced by the answer lines */
+
+  /* "Calling crossagent · Ns…" — elapsed seconds counted in CSS, on the same 24s clock */
+  .dv-call{opacity:.85}
+
+  /* status dot: blinks while the call runs, goes solid when the answer lands */
+  .dot{display:inline-block;width:.55em;height:.55em;border-radius:50%;background:var(--bone);margin-right:.6em;vertical-align:middle;position:relative;top:-.08em}
+  .dot--call{animation:dotPulse .9s step-end infinite,dotSettle 24s steps(1,end) infinite}
+  .dot--reply{animation:dotPulse .9s step-end infinite}
+  .dot--rv5{animation:dotPulse .9s step-end infinite,dotSettle38 24s steps(1,end) infinite}
+  .dot--rv6{animation:dotPulse .9s step-end infinite,dotSettle55 24s steps(1,end) infinite}
+  @keyframes dotSettle38{38.1%,100%{opacity:1}}
+  @keyframes dotSettle55{55.1%,100%{opacity:1}}
+  @keyframes dotPulse{0%,100%{opacity:1}50%{opacity:.15}}
+  @keyframes dotSettle{63.1%,100%{opacity:1}}
+
+  /* Claude Code spinner while the call is out: ✱ Word… (Ns · ↓ tokens) */
+  .dv-spin{color:#F0776A;animation-name:showSpin}
+  .dv-spin .spin-star{display:inline-block;animation:spinStar 1.2s steps(4,end) infinite}
+  .dv-spin .spin-word::before{content:'Thinking…';animation:spinWord 24s steps(1,end) infinite}
+  .dv-spin--2{animation-name:showSpin2}
+  .dv-spin .spin-word--2::before{content:'Editing…';animation-name:spinWord2}
+  @keyframes showSpin2{0%,70%{opacity:0;display:none}70.1%,94%{opacity:1;display:block}94.1%,100%{opacity:0;display:none}}
+  @keyframes spinWord2{0%,80%{content:'Editing…'}80.1%,100%{content:'Polishing…'}}
+  @keyframes showSpin{0%,10%{opacity:0;display:none}10.1%,63%{opacity:1;display:block}63.1%,100%{opacity:0;display:none}}
+  @keyframes spinStar{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+  @keyframes spinWord{0%,22%{content:'Thinking…'}22.1%,40%{content:'Crystallizing…'}40.1%,100%{content:'Coalescing…'}}
+  .dv-timer{display:inline}
+  .dv-timer::before{content:'· ' counter(dvt) 's…';counter-reset:dvt var(--dv-t)}
+  .dv-timer{animation:24s linear infinite}
+  .dv-timer--a{animation-name:timerA}
+    /* one call: 10%→55% (~11s) */
+  @keyframes timerA{0%,10%{--dv-t:0}63%,100%{--dv-t:13}}
+    
+  /* closing prose line: char-typed reveal starting at 48%, done by 70%, holds to 94% */
+
+  .dots span{animation:dotBlink 1.4s ease-in-out infinite}
+  .dots span:nth-child(2){animation-delay:.2s}
+  .dots span:nth-child(3){animation-delay:.4s}
+
+  @keyframes dotBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+}
+
+@media (prefers-reduced-motion: reduce){
+  /* static final state: driver's waiting line and reviewer's brief/discuss
+     prompts (R1/R4) are dropped to keep both windows fixed-height */
+  .rv-ln--4{display:none}
+  .dv-ln,.rv-ln{opacity:1}
+}
+
+/* ---- ticker strip --------------------------------------------------- */
+
+.strip{
+  border-top:6px solid var(--ink);
+  background:var(--ink);
+  color:var(--bone);
+  font-family:'Space Mono',monospace;
+  font-size:.74rem;
+  letter-spacing:.14em;
+  padding:.7rem clamp(1rem,5vw,5rem);
+  text-transform:uppercase;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+
+/* ---- steps ---------------------------------------------------------- */
+
+.h2{
+  font-family:'Archivo Black',sans-serif;
+  font-size:clamp(2rem,5.5vw,4rem);
+  line-height:.92;
+  letter-spacing:-.03em;
+  text-transform:uppercase;
+  margin-bottom:clamp(2rem,4vw,3.5rem);
+}
+
+.steps{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border-left:var(--line);
+  border-top:var(--line);
+}
+
+.step{
+  border-right:var(--line);
+  border-bottom:var(--line);
+  padding:clamp(1.2rem,2.5vw,2rem);
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+
+.step__n{
+  font-family:'Archivo Black',sans-serif;
+  font-size:clamp(3.5rem,8vw,6rem);
+  line-height:.8;
+  color:var(--ultra);
+}
+
+.step__txt{
+  font-size:clamp(1.05rem,1.8vw,1.35rem);
+  font-weight:500;
+  max-width:22ch;
+}
+
+.step__icon{margin-top:auto;width:108px}
+
+.step__icon .win__body{
+  padding:.45rem .55rem;
+  font-size:.62rem;
+  line-height:1.5;
+  color:#A39C8C;
+}
+
+.step:nth-child(1) .step__icon{--chrome:var(--signal)}
+.step:nth-child(2) .step__icon{--chrome:var(--ultra);--chrometext:var(--bone)}
+.step:nth-child(3) .step__icon{--chrome:var(--emerald);--chrometext:var(--bone)}
+
+/* ---- verdicts ------------------------------------------------------- */
+
+.verdicts{border-top:var(--line)}
+
+.verdict{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:1rem clamp(1rem,3vw,3rem);
+  align-items:center;
+  padding:clamp(1rem,2.2vw,1.6rem) 0;
+  border-bottom:var(--line);
+}
+
+.verdict__word{
+  font-family:'Space Mono',monospace;
+  font-weight:700;
+  font-size:clamp(2.1rem,7vw,5rem);
+  line-height:.95;
+  letter-spacing:-.04em;
+}
+
+.verdict:nth-child(1) .verdict__word,
+.verdict:nth-child(5) .verdict__word{color:var(--bone)}
+
+.verdict:nth-child(2) .verdict__word{color:var(--signal)}
+.verdict:nth-child(3) .verdict__word{color:var(--signal)}
+.verdict:nth-child(4) .verdict__word{color:var(--signal)}
+
+.verdict__def{
+  font-size:clamp(1rem,1.5vw,1.2rem);
+  line-height:1.5;
+  max-width:40ch;
+}
+
+.verdicts__note{
+  font-family:'Space Mono',monospace;
+  font-size:.85rem;
+  margin-top:2.4rem;
+  max-width:64ch;
+  line-height:1.9;
+}
+
+/* ---- install -------------------------------------------------------- */
+
+.installs{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:clamp(1.5rem,3vw,2.5rem);
+}
+
+
+.installs pre{
+  font-family:'Space Mono',monospace;
+  font-size:.8rem;
+  line-height:1.7;
+  white-space:pre;
+  overflow-x:auto;
+}
+
+.install__foot{
+  margin-top:clamp(1.6rem,3vw,2.4rem);
+  font-family:'Space Mono',monospace;
+  font-size:.85rem;
+  line-height:1.8;
+}
+
+.install--wide{margin-top:clamp(1.6rem,3vw,2.4rem)}
+.install__foot--cta{margin-top:2.4rem;max-width:64ch;color:var(--ink)}
+.install__link{color:var(--ink);font-weight:700;text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px}
+.install__link:hover{background:var(--ink);color:var(--bone);text-decoration:none}
+.install__foot code{
+  background:var(--ink);
+  color:var(--bone);
+  padding:.15rem .4rem;
+}
+
+/* ---- footer --------------------------------------------------------- */
+
+.foot{
+  display:flex;
+  flex-wrap:wrap;
+  gap:1rem clamp(1.5rem,4vw,3rem);
+  align-items:baseline;
+}
+
+.foot__link{
+  font-family:'Archivo Black',sans-serif;
+  font-size:clamp(1.4rem,3.5vw,2.4rem);
+  text-transform:uppercase;
+  letter-spacing:-.02em;
+  text-decoration:none;
+  border-bottom:6px solid var(--signal);
+}
+
+.foot__link:hover,
+.foot__link:focus-visible{color:var(--signal)}
+
+.foot__meta{
+  font-family:'Space Mono',monospace;
+  font-size:.8rem;
+  margin-left:auto;
+  color:#8A8578;
+}
+
+a:focus-visible,
+.foot__link:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
+
+/* ---- responsive ----------------------------------------------------- */
+
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr}
+  .hero__stack{min-height:0;padding-top:.5rem;display:flex;flex-direction:column;gap:1.6rem}
+  .hero__win{position:static;width:100%}
+  .steps{grid-template-columns:1fr}
+  .installs{grid-template-columns:1fr}
+  .verdict{grid-template-columns:1fr;gap:.35rem}
+  .foot__meta{margin-left:0;width:100%}
+}
+
+@media (max-width:520px){
+  body{font-size:16px}
+  .win__body{font-size:.72rem}
+  .installs pre{font-size:.7rem}
+}
+
+/* ---- topbar --------------------------------------------------------- */
+
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+  background:var(--ink);
+  color:var(--bone);
+  border-bottom:var(--line);
+}
+
+.topbar__inner{
+  max-width:1240px;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  gap:clamp(1rem,3vw,2.5rem);
+  padding:.6rem clamp(1rem,5vw,5rem);
+}
+
+.topbar__mark{
+  font-family:'Archivo Black',sans-serif;
+  font-size:1rem;
+  letter-spacing:-.02em;
+  text-transform:uppercase;
+  text-decoration:none;
+  flex:none;
+}
+
+.topbar__nav{
+  display:flex;
+  align-items:center;
+  gap:clamp(.9rem,2vw,1.8rem);
+  min-width:0;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.topbar__nav::-webkit-scrollbar{display:none}
+
+.topbar__link{
+  font:700 .68rem/1 'Space Mono',monospace;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  text-decoration:none;
+  white-space:nowrap;
+  padding:.35rem 0;
+  border-bottom:3px solid transparent;
+}
+
+.topbar__link:hover,
+.topbar__link:focus-visible{color:var(--signal);border-bottom-color:var(--signal)}
+
+.topbar__star{
+  flex:none;
+  margin-left:auto;
+  display:inline-flex;
+  align-items:center;
+  gap:.4rem;
+  background:var(--ink);
+  color:var(--bone);
+  border:2px solid var(--bone);
+  border-radius:0;
+  font:700 .68rem/1 'Space Mono',monospace;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  text-decoration:none;
+  padding:.45rem .6rem;
+}
+
+.topbar__star:hover{background:var(--signal);color:var(--ink);border-color:var(--ink)}
+
+.topbar__star-count{
+  padding-left:.4rem;
+  border-left:2px solid currentColor;
+}
+
+/* anchor targets clear the sticky bar */
+.band{scroll-margin-top:4rem}
+
+@media (max-width:720px){
+  .topbar__inner{gap:.9rem;padding:.55rem 1rem}
+  .topbar__mark{font-size:.85rem}
+  .topbar__star-label{display:none}
+  .topbar__star-count{padding-left:0;border-left:0}
+}

@@ -1,0 +1,57 @@
+---
+/* SSR-only star count: a failed or slow call degrades to a bare "Star". */
+let stars: number | null = null;
+
+try {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000);
+
+  try {
+    const response = await fetch('https://api.github.com/repos/k8adev/crossagent', {
+      headers: { Accept: 'application/vnd.github+json' },
+      signal: controller.signal,
+    });
+
+    if (response.ok) {
+      const repo = await response.json();
+      if (typeof repo?.stargazers_count === 'number') {
+        stars = repo.stargazers_count;
+      }
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+} catch {
+  stars = null;
+}
+---
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="topbar__mark" href="#pair">crossagent</a>
+
+    <nav class="topbar__nav" aria-label="Sections">
+      <a class="topbar__link" href="#pair">Pair</a>
+      <a class="topbar__link" href="#calls">Three calls</a>
+      <a class="topbar__link" href="#verdicts">Verdicts</a>
+      <a class="topbar__link" href="#install">Install</a>
+    </nav>
+
+    <a
+      class="topbar__star"
+      href="https://github.com/k8adev/crossagent"
+      target="_blank"
+      rel="noopener"
+      aria-label={stars === null ? 'Star crossagent on GitHub' : `Star crossagent on GitHub, ${stars} stars`}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+        <path
+          fill="currentColor"
+          d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
+        />
+      </svg>
+      <span class="topbar__star-label">Star</span>
+      {stars !== null && <span class="topbar__star-count">{stars}</span>}
+    </a>
+  </div>
+</header>

@@ -1,0 +1,47 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+
+/* Shared cache so the SSR GitHub call is not made on every request. */
+Astro.response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
+
+const posthogKey = import.meta.env.PUBLIC_POSTHOG_KEY ?? '';
+const posthogHost = import.meta.env.PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<meta name="description" content={description}>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<Header />
+<slot />
+<script define:vars={{ posthogKey, posthogHost }}>
+  /* Client-only, and once per page: view transitions can re-run this script. */
+  if (posthogKey && !window.__posthogReady) {
+    window.__posthogReady = true;
+    import('posthog-js').then(({ default: posthog }) => {
+      posthog.init(posthogKey, {
+        api_host: posthogHost,
+        capture_pageview: true,
+        person_profiles: 'identified_only',
+      });
+    });
+  }
+</script>
+</body>
+</html>

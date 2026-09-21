@@ -1,0 +1,5 @@
+# Install-time build scripts pnpm blocks by default; Astro's toolchain needs these.
+allowBuilds:
+  core-js: true
+  esbuild: true
+  sharp: true
