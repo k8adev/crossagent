@@ -17,7 +17,7 @@ Author: Keit Ollé (https://github.com/k8adev)
 
 ## Install
 
-Requirements: Node.js 18 or newer, tmux, and at least two panes each running a coding agent (Claude Code, Codex CLI).
+Requirements: Node.js 22 or newer, tmux, and at least two panes each running a coding agent (Claude Code, Codex CLI).
 
 Step 1. Add the MCP server to each agent.
 
