@@ -1,0 +1,62 @@
+# crossagent
+
+> crossagent pairs two coding agents running in adjacent tmux panes. One drives, the other reviews. Every plan and diff goes through the peer before it ships, and the reply always ends in a verdict.
+
+Site: https://crossagent.dev
+Repository: https://github.com/k8adev/crossagent
+Package: crossagent-mcp (npm)
+License: MIT
+Author: Keit Ollé (https://github.com/k8adev)
+
+## What it is
+
+- An MCP server that both Claude Code and Codex CLI load from the same binary.
+- All communication between the two agents goes through tmux. No network transport, no shared file, no socket.
+- Made for developers who already run more than one coding agent, from different providers, side by side in tmux.
+- Not for a single agent, an IDE-only setup, or anything outside a terminal multiplexer.
+
+## Install
+
+Requirements: Node.js 18 or newer, tmux, and at least two panes each running a coding agent (Claude Code, Codex CLI).
+
+Step 1. Add the MCP server to each agent.
+
+Claude Code:
+
+    claude mcp add crossagent -- npx -y crossagent-mcp
+
+Codex CLI:
+
+    codex mcp add crossagent -- npx -y crossagent-mcp
+
+Step 2. Link the pair skill so both agents load the pairing protocol.
+
+    npx -y crossagent-mcp setup --link
+
+This symlinks the skill into ~/.claude/skills/pair, ~/.codex/skills/pair (or $CODEX_HOME/skills/pair) and ~/.agents/skills/pair. Existing files or foreign symlinks are never overwritten. To undo:
+
+    npx -y crossagent-mcp setup --unlink
+
+Without step 2, the protocol is still available as the MCP prompt named `pair` (the /crossagent:pair slash command in Claude Code).
+
+## How it works
+
+1. ping: each agent registers its pane, harness and repository so the peer can be found.
+2. brief: the driver sends the peer the task and the context it needs.
+3. discuss: every plan and diff goes through the peer. The reply ends in one verdict line.
+
+## Verdicts
+
+The last line of every review is `VERDICT: <word>`.
+
+- AGREE: no corrections. The driver ships it as is.
+- ADJUST: fine once the listed items are fixed. The driver fixes them, or argues back when one is wrong.
+- OBJECT: do not proceed as written, reasons included. The driver reworks the plan and asks again.
+- ESCALATE: only the human can call this one. The driver stops and brings it to the user.
+- UNPARSED: not a verdict. The reply had no readable VERDICT line, so the driver asks again.
+
+crossagent never decides for you. It makes sure nothing ships without a second opinion.
+
+## Contributing
+
+Using another coding agent? crossagent only needs a harness that runs in a tmux pane. Open a pull request at https://github.com/k8adev/crossagent.

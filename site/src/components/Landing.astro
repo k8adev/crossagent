@@ -1,0 +1,224 @@
+---
+import type { Lang } from '../i18n';
+import { t } from '../i18n';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const copy = t(lang);
+---
+
+<header class="band band--hero" id="pair">
+  <div class="inner hero">
+    <div class="hero__copy">
+      <h1 set:html={copy.hero.title} />
+      <p class="hero__sub" set:html={copy.hero.sub} />
+
+      <dl class="hero__for">
+        <dt>{copy.hero.forLabel}</dt>
+        <dd>{copy.hero.forText}</dd>
+        <dt>{copy.hero.notForLabel}</dt>
+        <dd>{copy.hero.notForText}</dd>
+      </dl>
+
+      <a class="btn btn--primary hero__cta" href="#install">{copy.hero.cta}</a>
+    </div>
+
+    <div class="hero__stack">
+      <div class="win hero__win hero__win--driver">
+        <div class="win__bar">
+          <span class="win__title">pane %1 — Claude Code</span>
+          <span class="win__btns"><span class="win__btn"></span><span class="win__btn"></span></span>
+        </div>
+        <div class="win__body driver__body">
+          <span class="ln dv-ln dv-ln--0 entry"><span class="dot"></span><span set:html={copy.hero.driverEntry1} /></span>
+          <span class="ln dv-ln dv-ln--1 dv-call"><span class="dot dot--call"></span>{copy.hero.driverCall} <span class="dv-timer dv-timer--a"></span></span>
+          <span class="ln dv-ln dv-spin"><span class="spin-star">&#10033;</span> <span class="spin-word"></span></span>
+          <span class="ln dv-ln dv-ln--9 entry"><span class="dot"></span><span>{copy.hero.driverEntry2}</span></span>
+          <span class="ln dv-ln dv-ln--10 entry"><span class="dot dot--reply"></span><span>{copy.hero.driverEntry3}</span></span>
+          <span class="ln dv-ln dv-spin dv-spin--2"><span class="spin-star">&#10033;</span> <span class="spin-word spin-word--2"></span></span>
+        </div>
+      </div>
+
+      <div class="win hero__win hero__win--reviewer">
+        <div class="win__bar">
+          <span class="win__title">pane %2 — Codex</span>
+          <span class="win__btns"><span class="win__btn"></span><span class="win__btn"></span></span>
+        </div>
+        <div class="win__body reviewer__body">
+          <div class="rv-input rv-ln rv-ln--4 entry"><span class="chev">&rsaquo;</span><span>{copy.hero.reviewerInput}</span></div>
+          <span class="ln rv-ln rv-ln--5"><span class="dot dot--rv5"></span>{copy.hero.reviewerLine1}</span>
+          <span class="ln rv-ln rv-ln--6"><span class="dot dot--rv6"></span>{copy.hero.reviewerLine2}</span>
+          <span class="ln rv-ln rv-ln--7 entry"><span class="dot"></span><span set:html={copy.hero.reviewerVerdict} /></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+
+<section class="band band--steps" id="how-it-works">
+  <div class="inner">
+    <h2 class="h2">{copy.steps.heading}</h2>
+    <div class="steps__lead">
+      <p>{copy.steps.lead1}</p>
+      <p set:html={copy.steps.lead2} />
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step__n">ping</span>
+        <p class="step__txt">{copy.steps.ping}</p>
+      </div>
+      <div class="step">
+        <span class="step__n">brief</span>
+        <p class="step__txt">{copy.steps.brief}</p>
+      </div>
+      <div class="step">
+        <span class="step__n">discuss</span>
+        <p class="step__txt">{copy.steps.discuss}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band band--verdicts" id="verdicts">
+  <div class="inner">
+    <h2 class="h2">{copy.verdicts.heading}</h2>
+    <div class="verdicts__lead">
+      <p set:html={copy.verdicts.lead1} />
+      <p set:html={copy.verdicts.lead2} />
+    </div>
+    <dl class="verdicts">
+      <div class="verdict verdict--agree">
+        <dt class="verdict__word">AGREE</dt>
+        <dd class="verdict__def">{copy.verdicts.agreeDef}<span class="verdict__next">{copy.verdicts.agreeNext}</span></dd>
+      </div>
+      <div class="verdict verdict--adjust">
+        <dt class="verdict__word">ADJUST</dt>
+        <dd class="verdict__def">{copy.verdicts.adjustDef}<span class="verdict__next">{copy.verdicts.adjustNext}</span></dd>
+      </div>
+      <div class="verdict verdict--object">
+        <dt class="verdict__word">OBJECT</dt>
+        <dd class="verdict__def">{copy.verdicts.objectDef}<span class="verdict__next">{copy.verdicts.objectNext}</span></dd>
+      </div>
+      <div class="verdict verdict--escalate">
+        <dt class="verdict__word">ESCALATE</dt>
+        <dd class="verdict__def">{copy.verdicts.escalateDef}<span class="verdict__next">{copy.verdicts.escalateNext}</span></dd>
+      </div>
+      <div class="verdict verdict--unparsed">
+        <dt class="verdict__word">UNPARSED</dt>
+        <dd class="verdict__def" set:html={`${copy.verdicts.unparsedDef}<span class="verdict__next">${copy.verdicts.unparsedNext}</span>`} />
+      </div>
+    </dl>
+  </div>
+</section>
+
+<section class="band band--install" id="install">
+  <div class="inner">
+    <h2 class="h2">{copy.install.heading}</h2>
+    <h3 class="install__title install__title--step" set:html={copy.install.step1} />
+    <div class="installs">
+      <div class="install">
+        <h3 class="install__title">{copy.install.claudeCodeTitle}</h3>
+        <div class="copybox">
+          <code class="copybox__cmd">claude mcp add crossagent -- npx -y crossagent-mcp</code>
+          <button class="copybox__btn" type="button" data-copy="claude mcp add crossagent -- npx -y crossagent-mcp" aria-label={copy.install.claudeCodeCopyLabel}>
+            <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span class="copybox__label">{copy.install.copy}</span>
+          </button>
+        </div>
+      </div>
+      <div class="install">
+        <h3 class="install__title">{copy.install.codexTitle}</h3>
+        <div class="copybox">
+          <code class="copybox__cmd">codex mcp add crossagent -- npx -y crossagent-mcp</code>
+          <button class="copybox__btn" type="button" data-copy="codex mcp add crossagent -- npx -y crossagent-mcp" aria-label={copy.install.codexCopyLabel}>
+            <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span class="copybox__label">{copy.install.copy}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="install install--wide">
+      <h3 class="install__title" set:html={copy.install.step2} />
+      <div class="copybox">
+        <code class="copybox__cmd">npx -y crossagent-mcp setup --link</code>
+        <button class="copybox__btn" type="button" data-copy="npx -y crossagent-mcp setup --link" aria-label={copy.install.linkCopyLabel}>
+          <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span class="copybox__label">{copy.install.copy}</span>
+        </button>
+      </div>
+    </div>
+    <p class="install__foot install__foot--cta" set:html={copy.install.foot} />
+  </div>
+</section>
+
+<footer class="tmuxbar" aria-label={copy.footer.siteAriaLabel}>
+  <div class="tmuxbar__inner">
+    <span class="tmuxbar__session">[crossagent]</span>
+    <nav class="tmuxbar__windows" aria-label={copy.footer.sectionsAriaLabel}>
+      <a class="tmuxbar__win" href="#pair" data-win="pair">0:pair<span class="tmuxbar__flag"></span></a>
+      <a class="tmuxbar__win" href="#how-it-works" data-win="how-it-works">1:how-it-works<span class="tmuxbar__flag"></span></a>
+      <a class="tmuxbar__win" href="#verdicts" data-win="verdicts">2:verdicts<span class="tmuxbar__flag"></span></a>
+      <a class="tmuxbar__win" href="#install" data-win="install">3:install<span class="tmuxbar__flag"></span></a>
+    </nav>
+
+    <div class="tmuxbar__right">
+      <a class="tmuxbar__me" href="https://github.com/k8adev" rel="me">
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+        </svg>
+        <span>k8adev</span>
+      </a>
+      <a class="tmuxbar__me" href="https://x.com/k8adev" rel="me">
+        <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        <span>k8adev</span>
+      </a>
+      <a class="tmuxbar__lic" href="https://github.com/k8adev/crossagent/blob/main/LICENSE">MIT</a>
+    </div>
+  </div>
+</footer>
+
+<script define:vars={{ copyLabel: copy.install.copy, copiedLabel: copy.install.copied, selectAndCopyLabel: copy.install.selectAndCopy }}>
+/* tmux window flags: * = section on screen, - = the one before it */
+(function(){
+  var wins=Array.prototype.slice.call(document.querySelectorAll('.tmuxbar__win[data-win]'));
+  var sections=wins.map(function(w){return document.getElementById(w.getAttribute('data-win')||'');}).filter(Boolean);
+  if(sections.length<2)return;
+  var current='',last='',queued=false;
+  var paint=function(){
+    wins.forEach(function(w){
+      var id=w.getAttribute('data-win');
+      w.classList.toggle('tmuxbar__win--current',id===current);
+      w.classList.toggle('tmuxbar__win--last',id===last);
+    });
+  };
+  var pick=function(){
+    queued=false;
+    var probe=window.innerHeight*0.4;
+    var best=sections[0].id;
+    for(var i=0;i<sections.length;i++){
+      if(sections[i].getBoundingClientRect().top<=probe)best=sections[i].id;
+    }
+    if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2)best=sections[sections.length-1].id;
+    if(best!==current){last=current;current=best;paint();}
+  };
+  var onScroll=function(){if(!queued){queued=true;requestAnimationFrame(pick);}};
+  window.addEventListener('scroll',onScroll,{passive:true});
+  window.addEventListener('resize',onScroll);
+  pick();
+})();
+document.querySelectorAll('.copybox__btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var label=btn.querySelector('.copybox__label');
+    if(!label)return;
+    var done=function(){btn.classList.add('is-copied');label.textContent=copiedLabel;setTimeout(function(){btn.classList.remove('is-copied');label.textContent=copyLabel;},1600);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(btn.dataset.copy??'').then(done,function(){label.textContent=selectAndCopyLabel;});}
+    else{label.textContent=selectAndCopyLabel;}
+  });
+});
+</script>

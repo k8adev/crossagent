@@ -97,11 +97,13 @@ a{color:inherit}
 
 h1{
   font-family:'Archivo Black',sans-serif;
-  font-size:min(clamp(2.6rem,6.6vw,6rem),11.4cqi);
+  font-size:clamp(2.4rem,5.2vw,5rem);
   line-height:.9;
   letter-spacing:-.03em;
   text-transform:uppercase;
   text-wrap:balance;
+  overflow-wrap:anywhere;
+  hyphens:manual;
 }
 h1 .nb{white-space:nowrap}
 
@@ -531,10 +533,13 @@ a:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
 
 /* ---- responsive ----------------------------------------------------- */
 
-@media (max-width:900px){
+@media (max-width:1024px){
   .hero{grid-template-columns:1fr}
   .hero__stack{min-height:0;padding-top:.5rem;display:flex;flex-direction:column;gap:1.6rem}
   .hero__win{position:static;width:100%}
+}
+
+@media (max-width:900px){
   .steps{grid-template-columns:1fr}
   .installs{grid-template-columns:1fr}
   .verdict{grid-template-columns:1fr;gap:.35rem}
@@ -578,7 +583,6 @@ a:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
 
 .topbar__star{
   flex:none;
-  margin-left:auto;
   display:inline-flex;
   align-items:center;
   gap:.4rem;
@@ -593,10 +597,51 @@ a:focus-visible{outline:3px solid var(--bone);outline-offset:4px}
   padding:.45rem .6rem;
 }
 
-.topbar__star:hover{background:var(--signal);color:var(--ink);border-color:var(--ink)}
+.topbar__star:hover{background:var(--bone);color:var(--ink);border-color:var(--bone)}
 
 .topbar__star svg{display:block;width:14px;height:14px;flex:none}
 .topbar__star-count{display:block;line-height:1;font-variant-numeric:tabular-nums}
+
+.topbar__right{
+  flex:none;
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  gap:1rem;
+}
+
+.topbar__lang-switch{
+  flex:none;
+  display:inline-flex;
+  align-items:center;
+  gap:.6rem;
+}
+
+.topbar__lang{
+  display:inline-flex;
+  align-items:center;
+  background:none;
+  color:var(--bone);
+  border:none;
+  font:400 .68rem/1 'Space Mono',monospace;
+  letter-spacing:.06em;
+  text-decoration:none;
+  padding:.1em .3em;
+  margin:-.1em -.3em;
+  opacity:.55;
+}
+
+.topbar__lang:hover,
+.topbar__lang:focus-visible{
+  opacity:1;
+  background:var(--bone);
+  color:var(--ink);
+}
+
+.topbar__lang--current{
+  font-weight:700;
+  opacity:1;
+}
 
 /* anchor targets clear the sticky bar */
 .band{scroll-margin-top:4rem}

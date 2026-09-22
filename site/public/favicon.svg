@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Two tmux panes overlapping like the hero mockups: the driver behind, the reviewer in front. -->
+  <!-- Ink frames and bodies, colored title bars. A 1u bone hairline around each pane keeps the shape readable on dark tab strips. -->
+  <!-- back pane -->
+  <rect x="0" y="0" width="22" height="22" fill="#F2E9D8"/>
+  <rect x="1" y="1" width="20" height="20" fill="#0D0D0F"/>
+  <rect x="3" y="3" width="16" height="5" fill="#FF4D00"/>
+  <!-- front pane -->
+  <rect x="10" y="10" width="22" height="22" fill="#F2E9D8"/>
+  <rect x="11" y="11" width="20" height="20" fill="#0D0D0F"/>
+  <rect x="13" y="13" width="16" height="5" fill="#12724A"/>
+</svg>

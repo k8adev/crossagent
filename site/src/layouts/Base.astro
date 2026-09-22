@@ -1,34 +1,100 @@
 ---
 import '../styles/global.css';
 import Header from '../components/Header.astro';
+import type { Lang } from '../i18n';
+import { en } from '../i18n/en';
+import { ptBr } from '../i18n/pt-br';
 
 interface Props {
   title: string;
   description: string;
+  lang: Lang;
 }
 
-const { title, description } = Astro.props;
+const { title, description, lang } = Astro.props;
+const htmlLang = lang === 'pt-br' ? 'pt-BR' : 'en';
+const dict = lang === 'pt-br' ? ptBr : en;
 
 /* Shared cache so the SSR GitHub call is not made on every request. */
 Astro.response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
 
 const posthogKey = import.meta.env.PUBLIC_POSTHOG_KEY ?? '';
 const posthogHost = import.meta.env.PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
+
+const path = lang === 'pt-br' ? '/pt-br/' : '/';
+const canonicalUrl = new URL(path, Astro.site);
+const enUrl = new URL('/', Astro.site);
+const ptBrUrl = new URL('/pt-br/', Astro.site);
+const ogImageUrl = new URL('/og.png', Astro.site);
+const ogLocale = lang === 'pt-br' ? 'pt_BR' : 'en_US';
+const ogLocaleAlternate = lang === 'pt-br' ? 'en_US' : 'pt_BR';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'crossagent',
+  description,
+  url: canonicalUrl.toString(),
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'macOS, Linux',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+  },
+  license: 'https://opensource.org/licenses/MIT',
+  codeRepository: 'https://github.com/k8adev/crossagent',
+  author: {
+    '@type': 'Person',
+    name: 'Keit Ollé',
+    url: 'https://github.com/k8adev',
+  },
+  inLanguage: htmlLang,
+};
 ---
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang={htmlLang}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content={description}>
+<link rel="canonical" href={canonicalUrl.toString()}>
+<link rel="alternate" hreflang="en" href={enUrl.toString()}>
+<link rel="alternate" hreflang="pt-BR" href={ptBrUrl.toString()}>
+<link rel="alternate" hreflang="x-default" href={enUrl.toString()}>
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#0D0D0F">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="crossagent">
+<meta property="og:title" content={title}>
+<meta property="og:description" content={description}>
+<meta property="og:url" content={canonicalUrl.toString()}>
+<meta property="og:locale" content={ogLocale}>
+<meta property="og:locale:alternate" content={ogLocaleAlternate}>
+<meta property="og:image" content={ogImageUrl.toString()}>
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content={dict.meta.ogImageAlt}>
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content={title}>
+<meta name="twitter:description" content={description}>
+<meta name="twitter:image" content={ogImageUrl.toString()}>
+<meta name="twitter:creator" content="@k8adev">
+
+<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-<Header />
+<Header lang={lang} />
 <slot />
 <script define:vars={{ posthogKey, posthogHost }}>
   /* Client-only, and once per page: view transitions can re-run this script. */
