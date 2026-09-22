@@ -31,7 +31,19 @@ jobs:
 
       - run: pnpm build
 
-      - run: pnpm publish --no-git-checks --provenance --access public
+      # Skip when this version is already on npm (e.g. published by hand).
+      - name: Check npm for this version
+        id: npm
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "crossagent-mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.npm.outputs.published == 'false'
+        run: pnpm publish --no-git-checks --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
