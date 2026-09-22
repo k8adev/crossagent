@@ -1,0 +1,19 @@
+---
+interface Props {
+  cmd: string;
+  copyLabel: string;
+  /* Dictionary strings the page-level copy script (Landing.astro) reads via data attributes and
+     define:vars — this component only renders them into the button, it does not wire the click. */
+  copy: string;
+}
+
+const { cmd, copyLabel, copy } = Astro.props;
+---
+
+<div class="copybox">
+  <code class="copybox__cmd">{cmd}</code>
+  <button class="copybox__btn" type="button" data-copy={cmd} aria-label={copyLabel}>
+    <svg class="copybox__icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><rect x="5" y="5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 5V2H2v9h3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+    <span class="copybox__label">{copy}</span>
+  </button>
+</div>

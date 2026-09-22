@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { homedir } from "node:os";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./server.js";
 import { applyLink, applyUnlink, describeOutcome, planLinks } from "./link.js";
+import { packageRoot } from "./skill.js";
 
 const SETUP_SNIPPET = `crossagent-mcp setup
 
@@ -53,15 +53,8 @@ Both hosts follow symlinked skill directories, and the SKILL.md frontmatter
 (name + description) is shared across them.
 `;
 
-/** Package root is one level above this module's directory (dist/cli.js or src/cli.ts via tsx), both from a local checkout and an npm install. */
-function findPackageRoot(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..");
-}
-
 function runLink(unlink: boolean): void {
-  const packageRoot = findPackageRoot();
-  const sourceDir = join(packageRoot, "skills", "pair");
+  const sourceDir = join(packageRoot(), "skills", "pair");
   const codexHome = process.env.CODEX_HOME;
   const targets = planLinks(homedir(), codexHome);
 

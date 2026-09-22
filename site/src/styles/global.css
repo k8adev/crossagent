@@ -195,9 +195,7 @@ h1 .reviews{font-style:normal;color:var(--signal)}
 .hero__win .win__body{background:var(--ink);color:var(--bone);padding:1.1rem 1.5rem 1.2rem}
 .hero__win .ln--verdict{color:#5FE0A8}
 .hero__win .dv-call{color:var(--bone)}
-.ln--cue{color:#8A8578}
 .ln--verdict{font-weight:700;color:var(--emerald)}
-.ln--label{font-weight:700}
 
 /* ---- hero exchange animation ----------------------------------------- */
 /* 24s loop, one shared timeline for both windows (percentages below match
@@ -231,7 +229,7 @@ h1 .reviews{font-style:normal;color:var(--signal)}
 
   /* every line: opacity 0->1 at its %, back to 0 at 94% for the reset */
   .dv-ln,.rv-ln{opacity:0;animation:24s steps(1,end) infinite}
-  .dv-ln--0,.dv-ln--0b,.dv-ln--0c{animation-name:show3}
+  .dv-ln--0{animation-name:show3}
   .dv-ln--1{animation-name:show10}
       
       .rv-ln--4{animation-name:show14}
@@ -284,12 +282,6 @@ h1 .reviews{font-style:normal;color:var(--signal)}
   @keyframes timerA{0%,10%{--dv-t:0}63%,100%{--dv-t:13}}
     
   /* closing prose line: char-typed reveal starting at 48%, done by 70%, holds to 94% */
-
-  .dots span{animation:dotBlink 1.4s ease-in-out infinite}
-  .dots span:nth-child(2){animation-delay:.2s}
-  .dots span:nth-child(3){animation-delay:.4s}
-
-  @keyframes dotBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -297,22 +289,6 @@ h1 .reviews{font-style:normal;color:var(--signal)}
      prompts (R1/R4) are dropped to keep both windows fixed-height */
   .rv-ln--4{display:none}
   .dv-ln,.rv-ln{opacity:1}
-}
-
-/* ---- ticker strip --------------------------------------------------- */
-
-.strip{
-  border-top:6px solid var(--ink);
-  background:var(--ink);
-  color:var(--bone);
-  font-family:'Space Mono',monospace;
-  font-size:.74rem;
-  letter-spacing:.14em;
-  padding:.7rem clamp(1rem,5vw,5rem);
-  text-transform:uppercase;
-  overflow:hidden;
-  white-space:nowrap;
-  text-overflow:ellipsis;
 }
 
 /* ---- steps ---------------------------------------------------------- */
@@ -366,19 +342,6 @@ h1 .reviews{font-style:normal;color:var(--signal)}
   font-weight:500;
   max-width:22ch;
 }
-
-.step__icon{margin-top:auto;width:108px}
-
-.step__icon .win__body{
-  padding:.45rem .55rem;
-  font-size:.62rem;
-  line-height:1.5;
-  color:#A39C8C;
-}
-
-.step:nth-child(1) .step__icon{--chrome:var(--signal)}
-.step:nth-child(2) .step__icon{--chrome:var(--ultra);--chrometext:var(--bone)}
-.step:nth-child(3) .step__icon{--chrome:var(--emerald);--chrometext:var(--bone)}
 
 /* ---- verdicts ------------------------------------------------------- */
 

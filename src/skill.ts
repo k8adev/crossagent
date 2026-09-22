@@ -3,16 +3,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** Package root is one level above this module's directory — dist/skill.js or src/skill.ts via tsx, from a local checkout and from an npx install alike. */
-function packageRoot(): string {
+export function packageRoot(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..");
 }
 
-export function skillPath(): string {
+function skillPath(): string {
   return join(packageRoot(), "skills", "pair", "SKILL.md");
 }
 
 /** Drops the YAML frontmatter block, which is host metadata (name/description) rather than protocol content. */
-export function stripFrontmatter(content: string): string {
+function stripFrontmatter(content: string): string {
   return content.replace(/^---\n[\s\S]*?\n---\n/, "").trim();
 }
 

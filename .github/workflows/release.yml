@@ -15,23 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Check tag matches package.json version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version v$VERSION" >&2
+            exit 1
+          fi
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm lint
-
-      - run: pnpm test
-
-      - run: pnpm build
-
-      # Skip when this version is already on npm (e.g. published by hand).
+      # Skip build/publish when this version is already on npm (e.g. published by hand, re-tagged).
       - name: Check npm for this version
         id: npm
         run: |
@@ -41,6 +33,28 @@ jobs:
           else
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.npm.outputs.published == 'false'
+
+      - uses: actions/setup-node@v4
+        if: steps.npm.outputs.published == 'false'
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - if: steps.npm.outputs.published == 'false'
+        run: pnpm install --frozen-lockfile
+
+      - if: steps.npm.outputs.published == 'false'
+        run: pnpm lint
+
+      - if: steps.npm.outputs.published == 'false'
+        run: pnpm test
+
+      - if: steps.npm.outputs.published == 'false'
+        run: pnpm build
 
       - if: steps.npm.outputs.published == 'false'
         run: pnpm publish --no-git-checks --provenance --access public

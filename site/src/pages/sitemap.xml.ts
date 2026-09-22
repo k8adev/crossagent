@@ -1,26 +1,21 @@
 import type { APIRoute } from 'astro';
-
-/* Two pages today (en, pt-BR). Each entry cross-links the other locale via xhtml:link. */
-const pages = [
-  { path: '/', lang: 'en' },
-  { path: '/pt-br/', lang: 'pt-BR' },
-];
+import { DEFAULT_LOCALE, LOCALES, localeOf } from '../i18n';
 
 export const GET: APIRoute = ({ site }) => {
   const base = site?.toString().replace(/\/$/, '') ?? 'https://crossagent.dev';
 
-  const alternates = pages
+  const alternates = LOCALES
     .map(
-      (p) =>
-        `<xhtml:link rel="alternate" hreflang="${p.lang}" href="${base}${p.path}"/>`,
+      (l) =>
+        `<xhtml:link rel="alternate" hreflang="${l.htmlLang}" href="${base}${l.path}"/>`,
     )
     .join('');
-  const xDefault = `<xhtml:link rel="alternate" hreflang="x-default" href="${base}/"/>`;
+  const xDefault = `<xhtml:link rel="alternate" hreflang="x-default" href="${base}${localeOf(DEFAULT_LOCALE).path}"/>`;
 
-  const urls = pages
+  const urls = LOCALES
     .map(
-      (p) => `  <url>
-    <loc>${base}${p.path}</loc>
+      (l) => `  <url>
+    <loc>${base}${l.path}</loc>
     ${alternates}
     ${xDefault}
   </url>`,
