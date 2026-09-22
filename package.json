@@ -4,23 +4,48 @@
   "description": "MCP server that pairs two coding-agent harnesses over tmux: one drives, the other reviews.",
   "private": false,
   "type": "module",
+  "packageManager": "pnpm@12.4.1",
   "license": "MIT",
-  "author": "k8adev",
+  "author": "Keit Ollé (https://github.com/k8adev)",
+  "homepage": "https://crossagent.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/k8adev/crossagent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/k8adev/crossagent/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "tmux",
+    "claude-code",
+    "codex",
+    "pair-programming",
+    "code-review",
+    "coding-agents"
+  ],
   "bin": {
     "crossagent-mcp": "dist/cli.js"
   },
   "files": [
     "dist",
-    "skills"
+    "skills",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=22"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "lint": "tsc --noEmit",
-    "dev": "tsx src/cli.ts"
+    "dev": "tsx src/cli.ts",
+    "prepublishOnly": "pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",

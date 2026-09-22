@@ -1,5 +1,9 @@
 # crossagent
 
+[![npm version](https://img.shields.io/npm/v/crossagent-mcp)](https://www.npmjs.com/package/crossagent-mcp)
+[![CI](https://github.com/k8adev/crossagent/actions/workflows/ci.yml/badge.svg)](https://github.com/k8adev/crossagent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 `crossagent-mcp` is a stdio MCP server that lets two coding-agent harnesses
 (Claude Code, Codex CLI, …) running in different tmux panes pair-program:
 one drives, the other reviews. Both harnesses load the same server binary.
@@ -242,3 +246,10 @@ or in `~/.codex/config.toml`:
 command = "npx"
 args = ["-y", "crossagent-mcp"]
 ```
+
+## Contributing
+
+Bug reports, harness support, and protocol improvements are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, tests, and how to add a new
+harness. This project follows the
+[Contributor Covenant](CODE_OF_CONDUCT.md).

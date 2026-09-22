@@ -1,3 +1,10 @@
 node_modules/
 dist/
 .vitest/
+site/.vercel/
+site/dist/
+site/node_modules/
+.env
+.env.*
+!.env.example
+*.tgz
