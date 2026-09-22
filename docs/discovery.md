@@ -2,7 +2,7 @@
 
 How each crossagent pane figures out its own identity and finds its peer.
 
-Each pane running crossagent computes its own identity on startup:
+Each pane running crossagent computes its own identity when `ping` is called:
 
 - **pane** — resolution does not rely on environment variables alone.
   It prefers `$TMUX_PANE`, but falls back to walking the ancestor pid chain

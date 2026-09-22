@@ -50,3 +50,6 @@ ln -s <path-to-this-repo>/skills/pair ~/.claude/skills/pair
 ln -s <path-to-this-repo>/skills/pair ~/.codex/skills/pair
 ln -s <path-to-this-repo>/skills/pair ~/.agents/skills/pair
 ```
+
+For the `.mcp.json` / `codex mcp add` snippets that wire the server itself
+into each harness, see [docs/setup.md](setup.md).
