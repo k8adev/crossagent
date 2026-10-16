@@ -20,11 +20,13 @@ Optional `~/.config/crossagent/config.toml`:
 [harness.claude]
 idle_regex = "^❯\\s*$"
 busy_regex = "esc to interrupt"
+composer_regex = "^❯\\s+(?!Try \")\\S"
 reset_command = "/clear"
 
 [harness.codex]
 idle_regex = "^›\\s*(Ask Codex to do anything)?\\s*$"
 busy_regex = "esc to interrupt"
+composer_regex = "^›\\s+(?!Ask Codex to do anything)\\S"
 reset_command = "/new"
 
 [defaults]
@@ -33,10 +35,22 @@ quiet_ms = 1500
 tail_lines = 8
 ```
 
-`reset_command` is sent (and waited on) by `brief` before the role preamble,
-so a prior unrelated conversation on the peer pane doesn't bleed into the
-protocol. It defaults to `/clear` for `claude`, `/new` for `codex`, and
+`reset_command` is what `brief` sends (and waits on) to clear a stale peer
+conversation. It defaults to `/clear` for `claude`, `/new` for `codex`, and
 none for `unknown` harnesses.
+
+`composer_regex` matches the prompt line of an input box that holds text
+(not the empty placeholder). After sending, crossagent checks that the last
+prompt line in the tail does not match it; if it does, the prompt was not
+submitted, so Enter is retried once and then an error is raised. Without it
+(`unknown` harnesses) submit verification is skipped.
+
+`placeholder_regex` matches the empty-composer placeholder (`› Ask Codex to do
+anything`, `❯ Try "..."`), which counts as an empty input box.
+`reset_menu_regex` matches a menu the reset command may open (Codex's `/new`
+asks "Where should the new conversation run?"). `reset_menu_choice_regex`
+matches the option `brief` picks (`Use current Git worktree`): Enter when it is
+already selected, otherwise its number; no matching option raises an error.
 
 The built-in `idle_regex`/`busy_regex` defaults are a **best-effort guess**
 at each harness's idle/busy prompt shape, captured from live panes — they

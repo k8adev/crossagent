@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseVerdict, extractReview, briefPreamble, reviewPreamble } from "../protocol.js";
+import { parseVerdict, extractReview, briefPreamble } from "../protocol.js";
 
 describe("parseVerdict", () => {
   it("parses a plain VERDICT line", () => {
@@ -112,21 +112,30 @@ describe("extractReview", () => {
 });
 
 describe("briefPreamble", () => {
-  it("states the must-not-write rule and the verdict instruction", () => {
-    const text = briefPreamble("codex", "/repo/path");
-    expect(text).toContain("MUST NOT edit, create, or delete files, commit");
-    expect(text).toContain("REVIEW:");
+  it("states the role, the must-not-write rule and the verdict contract", () => {
+    const text = briefPreamble("codex", "/repo/path", "implementation");
+    expect(text).toContain("same-level copilot");
+    expect(text).toContain("MUST NOT edit, create, delete or commit");
+    expect(text).toContain(".agents/rules, AGENTS.md and CLAUDE.md");
+    expect(text).toContain("`REVIEW:`");
     expect(text).toContain("VERDICT: AGREE|ADJUST|OBJECT|ESCALATE");
     expect(text).toContain("codex");
     expect(text).toContain("/repo/path");
   });
-});
 
-describe("reviewPreamble", () => {
-  it("reminds about the REVIEW/VERDICT shape for each kind", () => {
+  it("does not ask for an acknowledgement round-trip", () => {
     for (const kind of ["plan", "implementation", "question"] as const) {
-      expect(reviewPreamble(kind)).toContain("REVIEW:");
-      expect(reviewPreamble(kind)).toContain("VERDICT: AGREE|ADJUST|OBJECT|ESCALATE");
+      expect(briefPreamble("codex", "/repo", kind)).not.toMatch(/understood|reply now/i);
     }
+  });
+
+  it("carries one distinct framing line per kind, and stays short", () => {
+    const plan = briefPreamble("codex", "/repo", "plan");
+    const implementation = briefPreamble("codex", "/repo", "implementation");
+    const question = briefPreamble("codex", "/repo", "question");
+    expect(plan).toContain("PLAN");
+    expect(implementation).toContain("IMPLEMENTATION");
+    expect(question).toContain("QUESTION");
+    expect(plan.split(/\s+/).length).toBeLessThan(140);
   });
 });

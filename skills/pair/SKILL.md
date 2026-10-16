@@ -18,10 +18,10 @@ satisfy before proceeding.
    - Exactly one peer → use it for the rest of the session.
    - No peers → tell the user there is no peer pane and continue solo.
    - More than one peer → ask the user which pane to pair with.
-3. `brief` the target pane once per session. `discuss` auto-briefs it if it
-   hasn't been briefed yet, so an explicit `brief` call is only needed up
-   front or to reset a polluted/stale peer session — use `force: true` in
-   that case.
+3. Start calling `discuss`. There is no setup step: every `discuss` message
+   carries the peer's role brief itself. Call `brief` only to reset a
+   polluted/stale peer conversation; it just clears the peer's context
+   (`/clear`, `/new`) and sends no role text.
 
 ## When to call `discuss`
 

@@ -1,47 +1,190 @@
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
 
 /* Thin wrappers around the `tmux` CLI. Every tmux interaction in this project goes through here. */
 
+/** Runs `tmux <args>`, optionally feeding `input` on stdin, and resolves with stdout. */
+function tmux(args: string[], input?: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = execFile("tmux", args, (error, stdout) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(stdout);
+      }
+    });
+    if (input !== undefined) {
+      child.stdin?.end(input);
+    }
+  });
+}
+
 export async function setPaneOption(pane: string, option: string, value: string): Promise<void> {
-  await execFileAsync("tmux", ["set-option", "-p", "-t", pane, option, value]);
+  await tmux(["set-option", "-p", "-t", pane, option, value]);
 }
 
 /** Reads a single pane user option, returning undefined if it is unset. */
 export async function getPaneOption(pane: string, option: string): Promise<string | undefined> {
   try {
-    const { stdout } = await execFileAsync("tmux", ["show-options", "-p", "-t", pane, "-v", option]);
-    const value = stdout.trim();
+    const value = (await tmux(["show-options", "-p", "-t", pane, "-v", option])).trim();
     return value.length > 0 ? value : undefined;
   } catch {
     return undefined;
   }
 }
 
-const ENTER_DELAY_MS = 250;
+/** Per-process counter that makes each paste buffer name unique. */
+let bufferCounter = 0;
 
-export async function send(pane: string, text: string): Promise<void> {
-  /* -l sends the text literally, then Enter is sent as a separate key so control sequences in `text` are not interpreted. */
-  await execFileAsync("tmux", ["send-keys", "-t", pane, "-l", text]);
+const ENTER_DELAY_MS = 250;
+/** How long after Enter the composer is inspected, so a submitted prompt has had time to start working. */
+const SUBMIT_SETTLE_MS = 500;
+/** Longer pause before the single Enter retry, for a TUI still digesting a large paste. */
+const SUBMIT_RETRY_DELAY_MS = 1_500;
+/** Non-empty trailing lines scanned for the composer; wide enough to still see the prompt line under a status footer. */
+const COMPOSER_TAIL_LINES = 60;
+/** A live composer sits just above its footer/status lines; more than this many lines below a prompt line means it is a scrollback echo, not the composer. */
+const MAX_LINES_BELOW_COMPOSER = 5;
+
+export interface SubmitVerification {
+  /** Idle prompt shape; an empty composer. */
+  idleRegex: RegExp;
+  /** Matches a prompt line that holds input (not the placeholder). */
+  composerRegex: RegExp;
+  /** Matches the harness's empty-composer placeholder line (e.g. `› Ask Codex to do anything`); counts as an empty composer. */
+  placeholderRegex?: RegExp;
+  /** Busy indicator (e.g. "esc to interrupt"); a match outside the composer/sent text means the prompt was taken. */
+  busyRegex?: RegExp;
+  /** Title of a menu the sent text opens instead of landing in the composer (Codex's `/new` worktree picker). Only the reset path sets it; see findMenu(). */
+  menuRegex?: RegExp;
+}
+
+/** Thrown by send() when the composer still holds the prompt after the Enter retry. */
+export class PromptNotSubmittedError extends Error {
+  constructor(
+    public readonly pane: string,
+    public readonly tail: string,
+  ) {
+    super(`prompt not submitted: pane ${pane} still holds it in the input box after retrying Enter`);
+    this.name = "PromptNotSubmittedError";
+  }
+}
+
+const MENU_OPTION_REGEX = /^[›>]?\s*\d+\.\s+\S/;
+
+export interface PaneMenu {
+  /** Numbered option lines, in order (marker and whitespace normalized). */
+  options: string[];
+  /** Index into `options` of the line carrying the `›` selection marker, or -1. */
+  selected: number;
+}
+
+/**
+ * Finds a numbered menu in a capture: a title line matching `titleRegex` that is not itself a
+ * prompt line (so the same words typed into the composer don't count), followed by at least two
+ * numbered options. Returns undefined otherwise.
+ */
+export function findMenu(content: string, titleRegex: RegExp): PaneMenu | undefined {
+  const lines = normalize(content).split("\n");
+  const title = lines.findIndex((line) => titleRegex.test(line) && !/^[›❯>]/.test(line));
+  if (title < 0) {
+    return undefined;
+  }
+  const options = lines.slice(title + 1).filter((line) => MENU_OPTION_REGEX.test(line));
+  if (options.length < 2) {
+    return undefined;
+  }
+  return { options: options.map((line) => line.replace(/^[›>]\s*/, "")), selected: options.findIndex((line) => line.startsWith("›")) };
+}
+
+/**
+ * True when `sentText` is still sitting unsent in the composer. The last prompt line in the tail
+ * decides: an empty one (idle or placeholder) means submitted, one with content means pending,
+ * but only if it sits just above the footer (an echo with a dialog or output below is not the
+ * composer). With no prompt line at all the state is unknown and reported as not pending, so
+ * crossagent never presses an extra Enter without having seen the composer. A busy line only
+ * counts when it is not part of the sent text or the composer, so a prompt that literally
+ * mentions the busy phrase cannot disable the check. With `menuRegex` (reset path only), an open
+ * menu counts as taken.
+ */
+export function composerHoldsInput(content: string, sentText: string, check: SubmitVerification): boolean {
+  const tail = tailWindow(normalize(content), COMPOSER_TAIL_LINES);
+  if (check.menuRegex && findMenu(content, check.menuRegex)) {
+    return false;
+  }
+  const sent = normalize(sentText).replace(/\n/g, " ");
+  const isSentContent = (line: string) => line.length > 0 && sent.includes(line);
+  if (check.busyRegex && tail.some((line) => check.busyRegex!.test(line) && !check.composerRegex.test(line) && !isSentContent(line))) {
+    return false;
+  }
+
+  const isEmpty = (line: string) => check.idleRegex.test(line) || (check.placeholderRegex?.test(line) ?? false);
+  const index = tail.findLastIndex((line) => isEmpty(line) || check.composerRegex.test(line));
+  if (index < 0 || isEmpty(tail[index]!)) {
+    return false;
+  }
+  /* A numbered option (the candidate or anything below it) means a selection dialog, whose `›` marker looks like a composer. */
+  if (tail.slice(index).some((line) => MENU_OPTION_REGEX.test(line))) {
+    return false;
+  }
+  return tail.length - 1 - index <= MAX_LINES_BELOW_COMPOSER;
+}
+
+/** Presses a single key (tmux key name, e.g. "Enter" or "1") in `pane`. */
+export async function pressKey(pane: string, key: string): Promise<void> {
+  await tmux(["send-keys", "-t", pane, key]);
+}
+
+export const pressEnter = (pane: string): Promise<void> => pressKey(pane, "Enter");
+
+/**
+ * Types `text` into `pane` and submits it. With `verify`, captures the pane afterwards and, if
+ * the composer still holds the prompt, presses Enter once more after a longer pause (re-checking
+ * first, in case it was submitted meanwhile); if it is still unsent, throws PromptNotSubmittedError
+ * instead of leaving the caller to wait out an idle timeout on a composer that can never look idle.
+ */
+export async function send(pane: string, text: string, verify?: SubmitVerification): Promise<void> {
   /*
-   * TUIs (Codex, Claude Code) treat a fast burst of input as a bracketed paste; an Enter arriving
-   * inside that burst becomes a newline in the input box instead of submitting it. Observed live:
-   * a multi-line prompt stayed unsent in Codex's composer. A short pause lets the paste settle.
+   * Paste through a tmux buffer with -p (bracketed paste) rather than `send-keys -l`: a long
+   * multi-line prompt typed as a burst of keys is treated by Codex/Claude Code as a paste anyway,
+   * and the Enter that followed could be swallowed, leaving the prompt unsent in the composer
+   * (observed live). A real bracketed paste is delimited, so the Enter that follows is a distinct
+   * keypress. The buffer name is unique per send because tmux buffers are server-global: a shared
+   * name would let concurrent sends overwrite each other between load and paste. -d frees it.
    */
-  await new Promise((resolve) => setTimeout(resolve, ENTER_DELAY_MS));
-  await execFileAsync("tmux", ["send-keys", "-t", pane, "Enter"]);
+  const buffer = `crossagent-${process.pid}-${bufferCounter++}`;
+  await tmux(["load-buffer", "-b", buffer, "-"], text);
+  await tmux(["paste-buffer", "-p", "-d", "-b", buffer, "-t", pane]);
+  /* Short pause so the TUI finishes ingesting the paste before Enter arrives. */
+  await sleep(ENTER_DELAY_MS);
+  await pressEnter(pane);
+
+  if (!verify) {
+    return;
+  }
+
+  await sleep(SUBMIT_SETTLE_MS);
+  if (!composerHoldsInput(await capture(pane, COMPOSER_TAIL_LINES), text, verify)) {
+    return;
+  }
+
+  await sleep(SUBMIT_RETRY_DELAY_MS);
+  if (!composerHoldsInput(await capture(pane, COMPOSER_TAIL_LINES), text, verify)) {
+    return;
+  }
+  await pressEnter(pane);
+  await sleep(SUBMIT_SETTLE_MS);
+  const after = await capture(pane, COMPOSER_TAIL_LINES);
+  if (composerHoldsInput(after, text, verify)) {
+    throw new PromptNotSubmittedError(pane, after);
+  }
 }
 
 export async function capture(pane: string, lines: number): Promise<string> {
-  const { stdout } = await execFileAsync("tmux", ["capture-pane", "-p", "-t", pane, "-S", `-${lines}`]);
-  return stdout;
+  return tmux(["capture-pane", "-p", "-t", pane, "-S", `-${lines}`]);
 }
 
 export async function listPanesRaw(format: string): Promise<string> {
-  const { stdout } = await execFileAsync("tmux", ["list-panes", "-a", "-F", format]);
-  return stdout;
+  return tmux(["list-panes", "-a", "-F", format]);
 }
 
 /** Tab-separated format used by resolveOwnPane() to intersect ancestor pids with live tmux panes. */

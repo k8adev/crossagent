@@ -8,16 +8,13 @@ import {
 import { z } from "zod";
 import { register, computeState } from "./bootstrap.js";
 import { discoverPeers, parsePanes, LIST_PANES_FORMAT, type PaneRecord, type PeerScope } from "./discovery.js";
-import { send, capture, setPaneOption, getPaneOption, waitIdle, WaitIdleTimeoutError, listPanesRaw, extractReply, TmuxUnreachableError } from "./tmux.js";
-import { loadConfig, getIdleRegex, getBusyRegex, getResetCommand } from "./config.js";
-import { briefPreamble, reviewPreamble, extractReview, type ReviewKind } from "./protocol.js";
+import { send, pressKey, pressEnter, findMenu, capture, waitIdle, WaitIdleTimeoutError, listPanesRaw, extractReply, TmuxUnreachableError, type SubmitVerification } from "./tmux.js";
+import { loadConfig, getIdleRegex, getBusyRegex, getComposerRegex, getPlaceholderRegex, getResetMenuRegex, getResetMenuChoiceRegex, getResetCommand } from "./config.js";
+import { briefPreamble, extractReview, type ReviewKind } from "./protocol.js";
 import { matchKnownHarness } from "./harness.js";
 import { loadPairSkill } from "./skill.js";
 
-/** Pane option set once brief() completes with AGREE; discuss() checks it to decide whether to (re-)brief first. */
-const BRIEFED_OPTION = "@crossagent_briefed";
-
-/** Per-pane discuss() round counter, reset whenever brief() (re-)briefs that pane. In-memory only — a server restart resets all counts. */
+/** Per-pane discuss() round counter, reset whenever brief() resets that pane's conversation. In-memory only — a server restart resets all counts. */
 const roundsByPane = new Map<string, number>();
 
 function errorResult(message: string) {
@@ -61,7 +58,7 @@ function ownPaneUnresolvedError(reason: string | undefined): string {
 export const SERVER_INSTRUCTIONS = [
   "crossagent pairs you with a peer coding agent running in another tmux pane. You are the driver: you plan, implement and decide. The peer is a same-level copilot that reads the repo and runs read-only checks, never writes, and is not an approver \u2014 treat its disagreement as signal, not a veto.",
   "",
-  "Sequence: `ping` once to register your pane, `list_peers` to find the peer (one peer \u2192 use it; none \u2192 say so and continue solo; several \u2192 ask the human which), then `discuss` for every round. `discuss` briefs the peer automatically the first time; call `brief` yourself only to reset a stale peer session with `force: true`.",
+  "Sequence: `ping` once to register your pane, `list_peers` to find the peer (one peer \u2192 use it; none \u2192 say so and continue solo; several \u2192 ask the human which), then `discuss` for every round. every `discuss` message carries the peer's role brief itself, so there is no setup step; call `brief` only to reset a stale peer conversation.",
   "",
   "Call `discuss` after drafting a plan and before writing code (`kind: \"plan\"`), after implementing and tests pass but before committing or opening a PR (`kind: \"implementation\"`), and on an architectural fork you cannot settle alone (`kind: \"question\"`). Every message must be self-contained, with the diff or concrete `file:line` pointers \u2014 the peer has not seen your turns.",
   "",
@@ -318,13 +315,13 @@ export function createServer(): McpServer {
     {
       title: "Brief",
       description:
-        "Resets the peer pane's conversation and sends the role preamble that makes it a read-only same-level reviewer bound to the VERDICT contract \u2014 once per peer session, since `discuss` briefs automatically when needed. Call it explicitly up front, or with `force: true` to re-brief a peer whose session went stale or off-protocol. Returns once the peer answers `VERDICT: AGREE`; any other verdict means the peer did not accept the role.",
+        "Resets the peer pane's conversation (sends the harness's reset command, e.g. `/clear` or `/new`, accepts Codex's \"where should the new conversation run\" menu with its default, and waits for the pane to go idle) and restarts its round counter. `discuss` needs no setup: every message already carries the peer's role brief, so call this only to clear a stale or off-protocol peer session. Sends no role text and expects no reply. A harness with no known reset command is left untouched and reported as `reset: false`.",
       inputSchema: {
         pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
-        force: z.boolean().default(false).describe("Re-brief a pane that is already marked briefed (default false, which makes an already-briefed pane a no-op)."),
+        force: z.boolean().default(false).describe("Accepted for compatibility with older callers; has no effect, since brief always resets."),
       },
     },
-    async ({ pane, force }) => {
+    async ({ pane }) => {
       const state = await computeState();
       const resolved = await resolveTargetPane(state, pane);
       if (!resolved.ok) {
@@ -333,28 +330,12 @@ export function createServer(): McpServer {
       const targetPane = resolved.pane;
       const harness = await peerHarness(state, targetPane);
 
-      if (!force) {
-        const alreadyBriefed = await getPaneOption(targetPane, BRIEFED_OPTION);
-        if (alreadyBriefed) {
-          return textResult({
-            pane: targetPane,
-            harness,
-            verdict: "AGREE",
-            rationale: "already briefed; pass force: true to re-brief",
-          });
-        }
+      const resetResult = await resetPane(targetPane, harness);
+      if (!resetResult.ok) {
+        return errorResult(resetResult.message);
       }
-
-      const briefResult = await runBrief(targetPane, state, harness);
-      if (!briefResult.ok) {
-        return errorResult(briefResult.message);
-      }
-      return textResult({
-        pane: targetPane,
-        harness,
-        verdict: briefResult.verdict,
-        rationale: briefResult.rationale,
-      });
+      roundsByPane.delete(targetPane);
+      return textResult({ pane: targetPane, harness, reset: resetResult.reset });
     },
   );
 
@@ -363,7 +344,7 @@ export function createServer(): McpServer {
     {
       title: "Discuss",
       description:
-        "The main pairing call: briefs the peer if it has not been briefed, sends your message under a kind-specific review preamble, waits for the peer's reply and returns `{ verdict, rationale, round }`. Send a self-contained message with concrete `file:line` pointers or the diff \u2014 the peer has its own context and has not seen your turns. Handle the verdict: AGREE proceed; ADJUST apply the corrections or argue back, then re-`discuss` the delta; OBJECT do not proceed as-is; ESCALATE stop and put the question to the human, never decide it yourself; UNPARSED (raw reply included) ask the peer to re-send in the `REVIEW:` / `VERDICT:` shape. Cap a topic at 3 rounds, then report both positions to the human; a timeout comes back as an error with the peer's last output.",
+        "The main pairing call: sends your message under the peer's role brief (same-level read-only reviewer, `VERDICT:` contract, a kind-specific framing line), waits for the peer's reply and returns `{ verdict, rationale, round }`. Send a self-contained message with concrete `file:line` pointers or the diff \u2014 the peer has its own context and has not seen your turns. Handle the verdict: AGREE proceed; ADJUST apply the corrections or argue back, then re-`discuss` the delta; OBJECT do not proceed as-is; ESCALATE stop and put the question to the human, never decide it yourself; UNPARSED (raw reply included) ask the peer to re-send in the `REVIEW:` / `VERDICT:` shape. Cap a topic at 3 rounds, then report both positions to the human; a timeout comes back as an error with the peer's last output.",
       inputSchema: {
         pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
         message: z.string().describe("The self-contained plan, diff, or question to review, with concrete paths."),
@@ -396,7 +377,7 @@ export function createServer(): McpServer {
 
   return server;
 
-  /** Shared implementation behind `discuss` and `ask_review` (a thin alias) — auto-briefs an un-briefed pane, then sends the review preamble + message and parses the verdict. */
+  /** Shared implementation behind `discuss` and `ask_review` (a thin alias) — sends the role brief + message in one go and parses the verdict. Stateless: the peer needs no prior briefing. */
   async function runDiscuss(pane: string | undefined, message: string, kind: ReviewKind, timeout_ms: number | undefined) {
     const state = await computeState();
     const resolved = await resolveTargetPane(state, pane);
@@ -406,24 +387,8 @@ export function createServer(): McpServer {
     const targetPane = resolved.pane;
     const harness = await peerHarness(state, targetPane);
 
-    const briefed = await getPaneOption(targetPane, BRIEFED_OPTION);
-    if (!briefed) {
-      const briefResult = await runBrief(targetPane, state, harness);
-      if (!briefResult.ok) {
-        return errorResult(briefResult.message);
-      }
-      if (briefResult.verdict !== "AGREE") {
-        return textResult({
-          pane: targetPane,
-          verdict: briefResult.verdict,
-          rationale: `brief did not return AGREE: ${briefResult.rationale}`,
-          round: 0,
-        });
-      }
-    }
-
     const config = await loadConfig();
-    const sentText = reviewPreamble(kind) + message;
+    const sentText = `${briefPreamble(harness, state.repoKey, kind)}\n\n${message}`;
     const result = await sendAndWait(targetPane, sentText, config, harness, timeout_ms);
     if (!result.ok) {
       return errorResult(result.message);
@@ -442,36 +407,97 @@ export function createServer(): McpServer {
     });
   }
 
-  /** Resets the peer's conversation (if a reset_command is known), sends the role brief, and marks the pane briefed on AGREE. */
-  async function runBrief(
+  /** Sends the harness's reset command (if one is known) and waits for the pane to settle. */
+  async function resetPane(
     targetPane: string,
-    state: Awaited<ReturnType<typeof computeState>>,
     harness: string,
-  ): Promise<{ ok: true; verdict: string; rationale: string } | { ok: false; message: string }> {
+  ): Promise<{ ok: true; reset: boolean } | { ok: false; message: string }> {
     const config = await loadConfig();
     const resetCommand = getResetCommand(config, harness);
-    if (resetCommand) {
-      await send(targetPane, resetCommand);
-      try {
-        await waitIdleOnPane(targetPane, config, harness, undefined);
-      } catch {
-        /* A reset that never settles is not fatal to briefing — fall through and send the brief anyway. */
+    if (!resetCommand) {
+      return { ok: true, reset: false };
+    }
+    try {
+      await sendToPane(targetPane, resetCommand, config, harness, { acceptMenu: true });
+      await answerResetMenu(targetPane, config, harness);
+      await waitIdleOnPane(targetPane, config, harness, undefined);
+    } catch (error) {
+      if (error instanceof WaitIdleTimeoutError) {
+        return { ok: false, message: `timed out waiting for pane ${targetPane} to settle after ${resetCommand}; last output:\n${error.tail}` };
       }
+      return { ok: false, message: `failed resetting pane ${targetPane}: ${(error as Error).message}` };
     }
-
-    const sentText = briefPreamble(harness, state.repoKey);
-    const result = await sendAndWait(targetPane, sentText, config, harness, undefined);
-    if (!result.ok) {
-      return result;
-    }
-
-    const { verdict, rationale } = extractReview(result.reply);
-    if (verdict === "AGREE") {
-      await setPaneOption(targetPane, BRIEFED_OPTION, String(state.pid));
-      roundsByPane.delete(targetPane);
-    }
-    return { ok: true, verdict, rationale };
+    return { ok: true, reset: true };
   }
+}
+
+const RESET_MENU_POLL_MS = 500;
+const RESET_MENU_POLLS = 6;
+
+/**
+ * Some harness versions answer the reset command with a menu instead of resetting (Codex's `/new`
+ * asks where the new conversation should run). When the harness has a reset_menu_regex and the
+ * menu shows up, make sure the option matching reset_menu_choice_regex (the current worktree) is
+ * the one taken: Enter if it is already selected, otherwise its number key, which selects and
+ * confirms in one step (verified live in Codex). Throws if the menu has no such option. Stops
+ * early once the pane looks idle without a menu, so harnesses without the menu pay one poll.
+ */
+async function answerResetMenu(
+  targetPane: string,
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  harness: string,
+): Promise<void> {
+  const menuRegex = getResetMenuRegex(config, harness);
+  const choiceRegex = getResetMenuChoiceRegex(config, harness);
+  if (!menuRegex || !choiceRegex) {
+    return;
+  }
+  const idleRegex = getIdleRegex(config, harness);
+  for (let poll = 0; poll < RESET_MENU_POLLS; poll++) {
+    const content = await capture(targetPane, 40);
+    const menu = findMenu(content, menuRegex);
+    if (menu) {
+      const wanted = menu.options.findIndex((option) => choiceRegex.test(option));
+      if (wanted < 0) {
+        throw new Error(`reset menu on pane ${targetPane} has no option matching ${choiceRegex}; options: ${menu.options.join(" | ")}`);
+      }
+      if (menu.selected === wanted) {
+        await pressEnter(targetPane);
+      } else {
+        const number = /^(\d+)\./.exec(menu.options[wanted]!)?.[1];
+        if (!number) {
+          throw new Error(`reset menu option on pane ${targetPane} has no number key: ${menu.options[wanted]}`);
+        }
+        await pressKey(targetPane, number);
+      }
+      return;
+    }
+    if (content.split("\n").some((line) => idleRegex.test(line.trim()))) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, RESET_MENU_POLL_MS));
+  }
+}
+
+/** Sends `text` and submits it, verifying (where the harness has a composerRegex) that the composer took it. Throws PromptNotSubmittedError otherwise. */
+async function sendToPane(
+  targetPane: string,
+  text: string,
+  config: Awaited<ReturnType<typeof loadConfig>>,
+  harness: string,
+  options: { acceptMenu?: boolean } = {},
+): Promise<void> {
+  const composerRegex = getComposerRegex(config, harness);
+  const verify: SubmitVerification | undefined = composerRegex
+    ? {
+        idleRegex: getIdleRegex(config, harness),
+        composerRegex,
+        placeholderRegex: getPlaceholderRegex(config, harness),
+        busyRegex: getBusyRegex(config, harness),
+        menuRegex: options.acceptMenu ? getResetMenuRegex(config, harness) : undefined,
+      }
+    : undefined;
+  await send(targetPane, text, verify);
 }
 
 /** Resolves the target pane shared by brief/discuss/ask_review: explicit `pane`, else the sole repo-scoped peer (needs our own pane resolved). */
@@ -496,7 +522,7 @@ async function resolveTargetPane(
   return resolveSolePeer(state.pane, state.repoKey);
 }
 
-/** Sends `text` to `targetPane`, waits for it to go idle, and extracts the reply. Shared by brief() and discuss(). */
+/** Sends `text` to `targetPane`, waits for it to go idle, and extracts the reply. Used by discuss(). */
 async function sendAndWait(
   targetPane: string,
   text: string,
@@ -505,7 +531,11 @@ async function sendAndWait(
   timeoutMs: number | undefined,
 ): Promise<{ ok: true; reply: string } | { ok: false; message: string }> {
   const before = await capture(targetPane, 5000);
-  await send(targetPane, text);
+  try {
+    await sendToPane(targetPane, text, config, harness);
+  } catch (error) {
+    return { ok: false, message: `failed sending to pane ${targetPane}: ${(error as Error).message}` };
+  }
 
   const idleRegex = getIdleRegex(config, harness);
   const busyRegex = getBusyRegex(config, harness);

@@ -8,6 +8,18 @@ export const CONFIG_PATH = join(homedir(), ".config", "crossagent", "config.toml
 export interface HarnessConfig {
   idleRegex: string;
   busyRegex?: string;
+  /**
+   * Matches a prompt line whose composer holds typed/pasted input (the placeholder excluded). After
+   * a send, the last prompt line in the tail matching this means the prompt was not submitted.
+   * Undefined disables submit verification for the harness.
+   */
+  composerRegex?: string;
+  /** Matches the empty-composer placeholder line, which counts as an empty composer (not pending input). */
+  placeholderRegex?: string;
+  /** Matches a menu the reset command opens (e.g. Codex's `/new` worktree picker); crossagent answers it with Enter (the default option). */
+  resetMenuRegex?: string;
+  /** Matches the option of the reset menu to pick (Codex: the current worktree). Required for menu handling. */
+  resetMenuChoiceRegex?: string;
   /** Slash command (or similar) that resets the harness's conversation state before a brief. Undefined when the harness has no known one. */
   resetCommand?: string;
 }
@@ -36,16 +48,24 @@ const DEFAULT_CONFIG: CrossagentConfig = {
     claude: {
       idleRegex: "^❯\\s*$",
       busyRegex: "esc to interrupt",
+      composerRegex: "^❯\\s+(?!Try \")\\S",
+      placeholderRegex: "^❯\\s+Try \"",
       resetCommand: "/clear",
     },
     codex: {
       idleRegex: "^›\\s*(Ask Codex to do anything)?\\s*$",
       busyRegex: "esc to interrupt",
+      composerRegex: "^›\\s+(?!Ask Codex to do anything)\\S",
+      placeholderRegex: "^›\\s+Ask Codex to do anything",
+      resetMenuRegex: "Where should the new conversation run\\?",
+      resetMenuChoiceRegex: "Use current Git worktree",
       resetCommand: "/new",
     },
     unknown: {
       idleRegex: "^[>❯›$%]\\s*$",
       busyRegex: "esc to interrupt",
+      /* No known composer shape, so no submit verification. */
+      composerRegex: undefined,
       /* No known reset command for an unrecognized harness. */
       resetCommand: undefined,
     },
@@ -67,7 +87,7 @@ export async function loadConfig(path: string = CONFIG_PATH): Promise<Crossagent
   }
 
   const parsed = parse(raw) as Partial<{
-    harness: Record<string, Partial<{ idle_regex: string; busy_regex: string; reset_command: string }>>;
+    harness: Record<string, Partial<{ idle_regex: string; busy_regex: string; composer_regex: string; placeholder_regex: string; reset_menu_regex: string; reset_menu_choice_regex: string; reset_command: string }>>;
     defaults: Partial<{ timeout_ms: number; quiet_ms: number; tail_lines: number }>;
   }>;
 
@@ -77,6 +97,10 @@ export async function loadConfig(path: string = CONFIG_PATH): Promise<Crossagent
     harness[name] = {
       idleRegex: config?.idle_regex ?? base.idleRegex,
       busyRegex: config?.busy_regex ?? base.busyRegex,
+      composerRegex: config?.composer_regex ?? base.composerRegex,
+      placeholderRegex: config?.placeholder_regex ?? base.placeholderRegex,
+      resetMenuRegex: config?.reset_menu_regex ?? base.resetMenuRegex,
+      resetMenuChoiceRegex: config?.reset_menu_choice_regex ?? base.resetMenuChoiceRegex,
       resetCommand: config?.reset_command ?? base.resetCommand,
     };
   }
@@ -107,4 +131,28 @@ export function getBusyRegex(config: CrossagentConfig, harnessName: string): Reg
 export function getResetCommand(config: CrossagentConfig, harnessName: string): string | undefined {
   const entry = config.harness[harnessName] ?? config.harness.unknown;
   return entry?.resetCommand;
+}
+
+export function getComposerRegex(config: CrossagentConfig, harnessName: string): RegExp | undefined {
+  const entry = config.harness[harnessName] ?? config.harness.unknown;
+  const pattern = entry?.composerRegex;
+  return pattern ? new RegExp(pattern) : undefined;
+}
+
+export function getPlaceholderRegex(config: CrossagentConfig, harnessName: string): RegExp | undefined {
+  const entry = config.harness[harnessName] ?? config.harness.unknown;
+  const pattern = entry?.placeholderRegex;
+  return pattern ? new RegExp(pattern) : undefined;
+}
+
+export function getResetMenuRegex(config: CrossagentConfig, harnessName: string): RegExp | undefined {
+  const entry = config.harness[harnessName] ?? config.harness.unknown;
+  const pattern = entry?.resetMenuRegex;
+  return pattern ? new RegExp(pattern) : undefined;
+}
+
+export function getResetMenuChoiceRegex(config: CrossagentConfig, harnessName: string): RegExp | undefined {
+  const entry = config.harness[harnessName] ?? config.harness.unknown;
+  const pattern = entry?.resetMenuChoiceRegex;
+  return pattern ? new RegExp(pattern) : undefined;
 }

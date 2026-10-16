@@ -123,44 +123,26 @@ export function parseVerdict(replyText: string): VerdictResult {
   return { verdict, rationale };
 }
 
-/**
- * Role brief sent once per pane before any review round: establishes the peer as a same-level
- * copilot (not a senior, not an approver), its read-only boundary, and the verdict contract every
- * subsequent reply must follow. The peer harness has no crossagent skill, so every rule it must
- * obey travels inside this text.
- */
-export function briefPreamble(harnessName: string, repoPath: string): string {
-  return [
-    `You are ${harnessName}, pairing over crossagent with another coding agent (the driver) on the repo at ${repoPath}.`,
-    "You are a same-level copilot, not a senior and not an approver — the driver does not need your sign-off to proceed, but you must say what you actually think.",
-    "",
-    "Your job: review plans and implementations for gaps, security flaws, violations of this repo's rules/conventions (read .agents/rules, AGENTS.md, CLAUDE.md if present), business-logic errors, and missing tests.",
-    "",
-    "You MAY read files and run read-only commands and tests. You MUST NOT edit, create, or delete files, commit, or run anything that mutates state.",
-    "",
-    "Disagree when you disagree — do not defer to the driver just because it proposed the change.",
-    "",
-    "Every reply you send has this exact shape, with nothing before the REVIEW: line and nothing after the VERDICT: line:",
-    "REVIEW: <your actual answer — analysis, findings, or just \"understood\">",
-    "VERDICT: AGREE|ADJUST|OBJECT|ESCALATE",
-    "",
-    "- AGREE = you have no corrections.",
-    "- ADJUST = you agree if the corrections you listed are made.",
-    "- OBJECT = do not proceed; state your reasons.",
-    "- ESCALATE = only for a decision the human requester must make (product/scope call, an irreversible action, something that conflicts with their own instruction, or data only they have) — state the question for them.",
-    "",
-    "Reply now with REVIEW: understood, then VERDICT: AGREE to confirm you understood.",
-  ].join("\n");
-}
-
-/** One short reminder paragraph per review kind, appended before the driver's actual message. */
+/** What the driver is bringing to the peer; picks the one-line framing in the brief. */
 export type ReviewKind = "plan" | "implementation" | "question";
 
-export function reviewPreamble(kind: ReviewKind): string {
-  const bodies: Record<ReviewKind, string> = {
-    plan: "Reviewing a PLAN before any code is written — check it for gaps, risks, and missing considerations before the driver implements it.",
-    implementation: "Reviewing an IMPLEMENTATION — check the actual diff/code for correctness, security, convention violations, and missing tests.",
-    question: "The driver has a QUESTION, not a plan or a diff — answer it directly.",
-  };
-  return `${bodies[kind]} Remember the exact reply shape: a \`REVIEW:\` line with your actual answer, then end with exactly one \`VERDICT: AGREE|ADJUST|OBJECT|ESCALATE\` line and nothing after it.\n\n`;
+const KIND_LINES: Record<ReviewKind, string> = {
+  plan: "This is a PLAN, before any code is written: look for gaps, risks and missing considerations.",
+  implementation: "This is an IMPLEMENTATION: check the actual diff/code for correctness, security, convention violations and missing tests.",
+  question: "This is a QUESTION, not a plan or a diff: answer it directly.",
+};
+
+/**
+ * Role brief prepended to every `discuss` message, so the peer needs no prior session state: a
+ * same-level copilot (not a senior, not an approver), its read-only boundary, and the reply
+ * contract. The peer harness has no crossagent skill, so every rule it must obey travels inside
+ * this text. Kept short on purpose — it is paid for on every round.
+ */
+export function briefPreamble(harnessName: string, repoPath: string, kind: ReviewKind): string {
+  return [
+    `You are ${harnessName}, a same-level copilot (not a senior, not an approver) reviewing for another coding agent, the driver, on the repo at ${repoPath}. Review plans and implementations; read .agents/rules, AGENTS.md and CLAUDE.md if present. You MAY read files and run read-only checks and tests; you MUST NOT edit, create, delete or commit, nor run anything that changes state (installs, migrations, pushes, writes). Disagree when you disagree.`,
+    KIND_LINES[kind],
+    "Reply with a `REVIEW:` line holding your answer, then end with exactly one final line, nothing after it: `VERDICT: AGREE|ADJUST|OBJECT|ESCALATE`.",
+    "AGREE = no corrections. ADJUST = agree if your listed corrections are made. OBJECT = do not proceed. ESCALATE = a decision only the human must make.",
+  ].join("\n");
 }

@@ -37,8 +37,9 @@ can detect and drive. Support for a new harness touches two files:
   an `idleRegex` (matched against a tail window of the pane's last lines to
   decide when the harness is idle) and, optionally, a `busyRegex` (overrides
   `idleRegex` whenever it matches anywhere in the tail window — useful for a
-  spinner line) and a `resetCommand` (a slash command or similar that clears
-  the harness's conversation state before a `brief`).
+  spinner line) a `composerRegex` (matches a prompt line holding unsent input, used to
+  verify a sent prompt was submitted) and a `resetCommand` (a slash command or
+  similar that clears the harness's conversation state on `brief`).
 
 These are **best-effort defaults** captured from live panes, expected to be
 tuned by hand once you can watch a real session; a user can always override

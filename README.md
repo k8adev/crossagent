@@ -29,13 +29,13 @@ This symlinks `skills/pair` into `~/.claude/skills/pair`, `~/.codex/skills/pair`
 
 Without step 2, the protocol is still available as the `pair` MCP prompt (`/mcp__crossagent__pair` in Claude Code). Details in [docs/skill.md](docs/skill.md).
 
-Briefing sends the harness's reset command to the peer pane (`/clear` for Claude Code, `/new` for Codex), clearing its current conversation — this also happens automatically the first time `discuss` briefs an unbriefed peer, not only on an explicit `brief` call.
+`brief` sends the harness's reset command to the peer pane (`/clear` for Claude Code, `/new` for Codex), clearing its current conversation. It is never needed for `discuss` to work and never runs automatically.
 
 ## How it works
 
 - **ping** — each agent registers its pane, harness and repository so the peer can be found.
-- **brief** — sets the peer's role: a same-level copilot or reviewer bound to the `VERDICT:` contract. It does not send the task. `discuss` calls it automatically on the first round; call it by hand only with `force: true` to reset a stale peer.
-- **discuss** — every round's task and context go here. It briefs the peer automatically if needed, and every plan or diff sent this way ends in one verdict line.
+- **brief** — resets the peer's conversation. Call it by hand only to clear a stale peer; it sends no role text.
+- **discuss** — every round's task and context go here. Each message carries a short role brief (same-level copilot or reviewer bound to the `VERDICT:` contract), so the peer needs no setup, and every plan or diff sent this way ends in one verdict line.
 
 The last line of every review is `VERDICT: <word>`:
 
@@ -58,8 +58,8 @@ The full round format, review extraction and verdict parsing are in [docs/protoc
 | `send` | Sends literal text + Enter to a tmux pane. |
 | `read` | Captures the last N lines from a tmux pane. |
 | `wait_reply` | Waits until the peer pane's harness looks idle, returns the new content. |
-| `brief` | Sends the pairing-protocol role brief to a pane and waits for `VERDICT: AGREE`. |
-| `discuss` | Auto-briefs the pane if needed, sends a review round, parses the `VERDICT:` line. |
+| `brief` | Resets the peer pane's conversation (`/clear`, `/new`). |
+| `discuss` | Sends a review round (role brief + message), parses the `VERDICT:` line. |
 | `ask_review` | Alias of `discuss` with `kind: "implementation"`. |
 | `pair` (prompt) | The full pairing protocol as a single user message. |
 
@@ -67,7 +67,7 @@ Arguments and defaults: [docs/tools.md](docs/tools.md).
 
 ## Configuration
 
-Optional config lives at `~/.config/crossagent/config.toml`. Each harness's idle/busy detection regexes and its reset command (sent before the role brief, e.g. `/clear` for Claude Code, `/new` for Codex) are overridable per harness, with tunable defaults for timeout, quiet period, and tail-window size. See [docs/configuration.md](docs/configuration.md) for the full reference and examples.
+Optional config lives at `~/.config/crossagent/config.toml`. Each harness's idle/busy detection regexes and its reset command (used by `brief`, e.g. `/clear` for Claude Code, `/new` for Codex) are overridable per harness, with tunable defaults for timeout, quiet period, and tail-window size. See [docs/configuration.md](docs/configuration.md) for the full reference and examples.
 
 ## How it finds the other pane
 

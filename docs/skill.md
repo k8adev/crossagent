@@ -22,7 +22,7 @@ prompt's text is not visible to the model until the user runs it.
 
 What actually makes `mcp add` sufficient in both hosts is the server
 `instructions` sent on `initialize` plus the tool descriptions — together they
-carry when to pair, the `list_peers → brief → discuss` sequence, the
+carry when to pair, the `list_peers → discuss` sequence, the
 `VERDICT: AGREE|ADJUST|OBJECT|ESCALATE` contract and what each verdict means,
 the 3-round cap, and that `ESCALATE` means stop and ask the human.
 
