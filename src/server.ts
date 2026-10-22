@@ -317,7 +317,7 @@ export function createServer(): McpServer {
       description:
         "Resets the peer pane's conversation (sends the harness's reset command, e.g. `/clear` or `/new`, accepts Codex's \"where should the new conversation run\" menu with its default, and waits for the pane to go idle) and restarts its round counter. `discuss` needs no setup: every message already carries the peer's role brief, so call this only to clear a stale or off-protocol peer session. Sends no role text and expects no reply. A harness with no known reset command is left untouched and reported as `reset: false`.",
       inputSchema: {
-        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
+        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped agent peer (shell panes are ignored; ties go to the peer in your own window)."),
         force: z.boolean().default(false).describe("Accepted for compatibility with older callers; has no effect, since brief always resets."),
       },
     },
@@ -346,7 +346,7 @@ export function createServer(): McpServer {
       description:
         "The main pairing call: sends your message under the peer's role brief (same-level read-only reviewer, `VERDICT:` contract, a kind-specific framing line), waits for the peer's reply and returns `{ verdict, rationale, round }`. Send a self-contained message with concrete `file:line` pointers or the diff \u2014 the peer has its own context and has not seen your turns. Handle the verdict: AGREE proceed; ADJUST apply the corrections or argue back, then re-`discuss` the delta; OBJECT do not proceed as-is; ESCALATE stop and put the question to the human, never decide it yourself; UNPARSED (raw reply included) ask the peer to re-send in the `REVIEW:` / `VERDICT:` shape. Cap a topic at 3 rounds, then report both positions to the human; a timeout comes back as an error with the peer's last output.",
       inputSchema: {
-        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
+        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped agent peer (shell panes are ignored; ties go to the peer in your own window)."),
         message: z.string().describe("The self-contained plan, diff, or question to review, with concrete paths."),
         kind: z
           .enum(["plan", "implementation", "question"])
@@ -367,7 +367,7 @@ export function createServer(): McpServer {
       description:
         "Compatibility alias for `discuss` with `kind: \"implementation\"` \u2014 same briefing, waiting, verdict parsing and round counting, with the message named `prompt`. Prefer `discuss`, which also offers the \"plan\" and \"question\" kinds. Returns the same `{ verdict, rationale, round }`.",
       inputSchema: {
-        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped peer."),
+        pane: z.string().optional().describe("tmux pane id of the peer, e.g. %13. Omit to use the sole repo-scoped agent peer (shell panes are ignored; ties go to the peer in your own window)."),
         prompt: z.string().describe("The self-contained implementation/diff to review, with concrete paths."),
         timeout_ms: z.number().int().positive().optional().describe("How long to wait for the peer's reply (defaults to the configured timeout, 5 min)."),
       },
@@ -500,7 +500,7 @@ async function sendToPane(
   await send(targetPane, text, verify);
 }
 
-/** Resolves the target pane shared by brief/discuss/ask_review: explicit `pane`, else the sole repo-scoped peer (needs our own pane resolved). */
+/** Resolves the target pane shared by brief/discuss/ask_review: explicit `pane`, else the implicit repo-scoped agent peer (needs our own pane resolved). */
 async function resolveTargetPane(
   state: Awaited<ReturnType<typeof computeState>>,
   pane: string | undefined,
@@ -580,22 +580,38 @@ async function waitIdleOnPane(
 
 type SolePeerResult = { ok: true; pane: string } | { ok: false; message: string };
 
-/** Resolves the implicit target pane for ask_review: the sole repo-scoped peer, or an error. */
+/**
+ * Picks the implicit target among repo-scoped peers. Only agent panes qualify (declared harness,
+ * or a `currentCommand` that matches a known harness) — a plain shell is never a target. When
+ * several agents remain, the ones in the driver's own window win if exactly one is there.
+ * Pure and unit-testable.
+ */
+export function pickImplicitPeer(peers: PaneRecord[], ownWindowId: string): SolePeerResult {
+  const agents = peers.filter((peer) => resolvePeerHarness(peer) !== "unknown");
+  if (agents.length === 0) {
+    return { ok: false, message: "no pane specified and no repo-scoped agent peers found" };
+  }
+  if (agents.length === 1) {
+    return { ok: true, pane: agents[0]!.paneId };
+  }
+  const sameWindow = agents.filter((peer) => ownWindowId !== "" && peer.windowId === ownWindowId);
+  if (sameWindow.length === 1) {
+    return { ok: true, pane: sameWindow[0]!.paneId };
+  }
+  const candidates = agents.map((peer: PaneRecord) => peer.paneId).join(", ");
+  return { ok: false, message: `no pane specified and multiple repo-scoped peers found: ${candidates}` };
+}
+
+/** Resolves the implicit target pane for brief/discuss/ask_review: the repo-scoped agent peer (see pickImplicitPeer), or an error. */
 async function resolveSolePeer(ownPane: string, ownRepoKey: string): Promise<SolePeerResult> {
+  const windowId = await ownWindowId(ownPane);
   const peers = await discoverPeers({
     scope: "repo",
     ownPaneId: ownPane,
-    ownWindowId: await ownWindowId(ownPane),
+    ownWindowId: windowId,
     ownRepoKey,
   });
-  if (peers.length === 0) {
-    return { ok: false, message: "no pane specified and no repo-scoped peers found" };
-  }
-  if (peers.length > 1) {
-    const candidates = peers.map((peer: PaneRecord) => peer.paneId).join(", ");
-    return { ok: false, message: `no pane specified and multiple repo-scoped peers found: ${candidates}` };
-  }
-  return { ok: true, pane: peers[0]!.paneId };
+  return pickImplicitPeer(peers, windowId);
 }
 
 async function ownWindowId(pane: string): Promise<string> {

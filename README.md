@@ -63,7 +63,7 @@ The full round format, review extraction and verdict parsing are in [docs/protoc
 | `ask_review` | Alias of `discuss` with `kind: "implementation"`. |
 | `pair` (prompt) | The full pairing protocol as a single user message. |
 
-Arguments and defaults: [docs/tools.md](docs/tools.md).
+Arguments and defaults: [docs/tools.md](docs/tools.md). When `pane` is omitted, the target is the repo-scoped agent peer: shell panes are ignored, and with several agents the one in your own tmux window wins if it is the only one there.
 
 ## Configuration
 

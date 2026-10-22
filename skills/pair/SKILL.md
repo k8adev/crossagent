@@ -18,6 +18,8 @@ satisfy before proceeding.
    - Exactly one peer → use it for the rest of the session.
    - No peers → tell the user there is no peer pane and continue solo.
    - More than one peer → ask the user which pane to pair with.
+   - Omitting `pane` on `discuss`/`brief` only works for a repo-scoped agent peer (shell panes
+     are ignored; with several agents, exactly one in your own window wins). Otherwise pass `pane`.
 3. Start calling `discuss`. There is no setup step: every `discuss` message
    carries the peer's role brief itself. Call `brief` only to reset a
    polluted/stale peer conversation; it just clears the peer's context

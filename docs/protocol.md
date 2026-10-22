@@ -44,6 +44,8 @@ reset-only: it sends the harness's `reset_command` (if configured), waits for
 the pane to settle, and restarts that pane's round counter. `ask_review` is
 `discuss` with `kind: "implementation"`.
 
+**Implicit target**: With `pane` omitted, the target is the repo-scoped **agent** peer: only panes with a declared harness or a `pane_current_command` that is a supported agent (`claude`, `codex`) count, so plain shell panes are never picked. If several agents remain, the one in your own tmux window wins when exactly one is there; otherwise the call fails with the candidate pane ids and you must pass `pane`.
+
 **Submit verification**: text goes in through a tmux paste buffer
 (`load-buffer` + `paste-buffer -p`) followed by Enter. Where the harness has a
 `composer_regex`, the pane is captured after Enter; if the input box still
